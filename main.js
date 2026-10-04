@@ -159,6 +159,9 @@ class WordbookView extends ItemView {
       strip.createSpan({ text: '删除' });
       const cardEl = wrap.createDiv({ cls: 'ew-swipe-card' });
       mount(new WordCard(cardEl, this.plugin, card, BOOK_PATH + '::' + card.word, { reviewMode: this.reviewModeRequested }));
+      const closeBtn = strip.createDiv({ cls: 'ew-swipe-close', attr: { role: 'button', 'aria-label': '' }});
+      closeBtn.setText('x');
+      closeBtn.addEventListener('click', event => { event.stopPropagation(); cardEl.style.transform = ''; wrap.removeClass('ew-swipe-open'); });
       this.attachSwipe(wrap, cardEl, strip, card.word);
     }
     const catalog = this.plugin.bookCatalog(this.plugin.selectedBook());
@@ -227,6 +230,7 @@ class WordbookView extends ItemView {
   }
   attachSwipe(wrap, cardEl, strip, word) {
     let startX = 0, startY = 0, dx = 0, active = false, axis = null, dragged = false;
+    const outside = event => { if (!wrap.contains(event.target)) { cardEl.style.transform = ''; wrap.classList.remove('ew-swipe-open'); } };
     const base = () => wrap.hasClass('ew-swipe-open') ? -88 : 0;
     const settle = () => {
       if (!active) return;
@@ -235,6 +239,7 @@ class WordbookView extends ItemView {
       cardEl.style.transform = open ? 'translateX(-88px)' : '';
       cardEl.style.userSelect = '';
       if (open) wrap.addClass('ew-swipe-open'); else wrap.removeClass('ew-swipe-open');
+      if (open) document.addEventListener('pointerdown', outside, { once: true, capture: true }); else document.removeEventListener('pointerdown', outside, { capture: true });
       dx = 0;
       window.setTimeout(() => { dragged = false; }, 60);
     };
