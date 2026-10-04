@@ -1930,8 +1930,9 @@ async function writeWordShard(plugin, state, key, card) {
   let rev = baseRev + 1;
   if (diskChanged) {
     await adapter.write(path.replace(/\.json$/, '') + '.conflict-' + conflictStamp() + '.json', JSON.stringify(disk, null, 2));
-    deepMergeInto(card, disk.card || {});
-    rev = Math.max(diskRev, baseRev) + 1;
+    // 只在磁盘版本确实更新时并入磁盘改动；磁盘过期（rev 未超前）以内存为准，
+    // 否则过期快照会把已删除的收藏/记录复活。
+    if (diskRev > baseRev) { deepMergeInto(card, disk.card || {}); rev = diskRev + 1; }
   }
   await adapter.write(path, JSON.stringify({ rev, updatedAt: new Date().toISOString(), word: card.word, card }, null, 2));
   state.revs['w:' + key] = rev;
@@ -1953,10 +1954,14 @@ async function writeCollectionShard(plugin, state, name, value) {
   let rev = baseRev + 1;
   if (diskChanged) {
     await adapter.write(path.replace(/\.json$/, '') + '.conflict-' + conflictStamp() + '.json', JSON.stringify(disk, null, 2));
+  }
+  // 只在磁盘版本确实更新（另一台设备写入过）时并入磁盘改动；
+  // 磁盘过期时以内存为准，否则过期词书列表会把已删除的旧单词复活。
+  if (disk && diskRev > baseRev) {
     if (name === 'libraryIndex') mergeLibraryIndexInto(value, diskPayload || {});
     else if (name === 'exerciseAttempts') mergeUnionIntoArr(value, diskPayload || []);
     else mergeUnionIntoObj(value, diskPayload || {});
-    rev = Math.max(diskRev, baseRev) + 1;
+    rev = diskRev + 1;
   }
   const body = { rev, updatedAt: new Date().toISOString() };
   if (name === 'libraryIndex') { body.books = value.books; body.customBooks = value.customBooks; body.selectedBook = value.selectedBook; body.importedNotes = value.importedNotes; }
@@ -2462,6 +2467,7 @@ module.exports = class WordbookPlugin extends Plugin {
       if (!card) { const entry = await this.lookupWord(word); card = { word, phonetic: entry.phonetic, meaning: entry.meaning }; this.data.library.words.push(card); }
       const at = after ? list.indexOf(after) : -1;
       list.splice(at >= 0 ? at + 1 : list.length, 0, word);
+      const stats = this.ensureDailyStats(); stats.words += 1;
       await this.persist();
     } finally { this.addingBookWord = false; }
     this.refreshBook();

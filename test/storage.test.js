@@ -255,5 +255,41 @@ const wordFile = (adapter, word) => P.words + '/' + shardFileName(word) + '.json
     assert.strictEqual(await readShards(plugin), null);
   });
 
+  await test('磁盘过期（rev 未超前）：内存为准，已删除的词不复活', async () => {
+    const adapter = makeAdapter();
+    adapter.files.set(DIR + '/data.json', JSON.stringify(legacyDataJson()));
+    const plugin = makePlugin(adapter);
+    plugin.data = await initShardStorage(plugin);
+    await saveShards(plugin, plugin.data);
+    // 模拟磁盘被回滚成旧快照（rev 未超前于内存）
+    const stale = JSON.parse(adapter.files.get(P.libraryIndex));
+    stale.rev = 1;
+    adapter.files.set(P.libraryIndex, JSON.stringify(stale));
+    // 内存中删除一个词后再保存：应以内存的删除为准
+    plugin.data.library.books.personal = plugin.data.library.books.personal.filter(w => w !== 'table');
+    await saveShards(plugin, plugin.data);
+    const disk = JSON.parse(adapter.files.get(P.libraryIndex));
+    assert.ok(!disk.books.personal.includes('table'), '已删除的词不应从过期磁盘复活');
+    assert.ok(disk.books.personal.includes('apple'), '未删除的词保留');
+  });
+
+  await test('磁盘更新（rev 超前）：另一台设备的改动仍并入', async () => {
+    const adapter = makeAdapter();
+    adapter.files.set(DIR + '/data.json', JSON.stringify(legacyDataJson()));
+    const plugin = makePlugin(adapter);
+    plugin.data = await initShardStorage(plugin);
+    await saveShards(plugin, plugin.data);
+    // 模拟另一台设备写入了更高版本（personal 词书新增一个词）
+    const newer = JSON.parse(adapter.files.get(P.libraryIndex));
+    newer.rev = (newer.rev || 1) + 5;
+    newer.books.personal = [...newer.books.personal, 'brandnew'];
+    adapter.files.set(P.libraryIndex, JSON.stringify(newer));
+    // 本机改动一个无关字段后保存：应并入新设备的改动
+    plugin.data.library.selectedBook = 'personal';
+    await saveShards(plugin, plugin.data);
+    const disk = JSON.parse(adapter.files.get(P.libraryIndex));
+    assert.ok(disk.books.personal.includes('brandnew'), '新设备的词应保留');
+  });
+
   console.log(process.exitCode ? '存在失败用例' : `全部通过：${passed} 项`);
 })().catch(error => { console.error(error); process.exit(1); });
