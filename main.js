@@ -178,12 +178,17 @@ class WordbookView extends ItemView {
     if (isMobile()) this.renderSearchBall();
     this.locateLastCard();
   }
+  bookCountLabel(book) {
+    const added = (this.plugin.data.library.books[book.id] || []).length;
+    const catalog = this.plugin.bookCatalog(book).length;
+    return catalog ? added + ' / ' + catalog : added + ' 词';
+  }
   renderMobileTopbar(el) {
     const plugin = this.plugin;
     const current = plugin.selectedBook();
     const row = el.createDiv({ cls: 'ew-book-row', attr: { role: 'button', 'aria-label': '切换词书' } });
     row.createSpan({ cls: 'ew-book-name', text: current.name });
-    row.createSpan({ cls: 'ew-book-count', text: String(plugin.libraryCards().length) });
+    row.createSpan({ cls: 'ew-book-count', text: this.bookCountLabel(current) });
     row.createSpan({ cls: 'ew-book-arrow', text: '▸' });
     row.addEventListener('click', () => openBookSheet(this));
     const stats = plugin.dailyStats?.[todayKey()] || { words: 0, minutes: 0 };
@@ -358,14 +363,14 @@ class BookSidebar extends MarkdownRenderChild {
     const current = plugin.selectedBook();
     const row = el.createDiv({ cls: 'ew-book-row', attr: { role: 'button', 'aria-label': '展开词书列表' } });
     row.createSpan({ cls: 'ew-book-name', text: current.name });
-    row.createSpan({ cls: 'ew-book-count', text: String(plugin.libraryCards().length) });
+    row.createSpan({ cls: 'ew-book-count', text: this.view.bookCountLabel(current) });
     row.createSpan({ cls: 'ew-book-arrow', text: this.expanded ? '▾' : '▸' });
     const list = el.createDiv({ cls: 'ew-book-list' });
     if (!this.expanded) list.setAttribute('hidden', '');
     for (const book of plugin.allBooks()) {
       const item = list.createDiv({ cls: 'ew-book-item' + (book.id === current.id ? ' on' : '') });
       item.createSpan({ text: book.name });
-      item.createSpan({ cls: 'ew-book-item-n', text: String((plugin.data.library.books[book.id] || []).length) });
+      item.createSpan({ cls: 'ew-book-item-n', text: this.view.bookCountLabel(book) });
       item.addEventListener('click', async () => {
         this.expanded = false;
         if (book.id !== current.id) await plugin.selectBook(book.id); else this.render();
