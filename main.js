@@ -232,12 +232,34 @@ class WordbookView extends ItemView {
       cardEl.style.transform = 'translateX(' + value + 'px)';
       if (animate) window.setTimeout(() => { if (!active) cardEl.style.transition = 'none'; }, 320);
     };
+    const confirmDelete = () => {
+      const plugin = this.plugin;
+      const bookId = plugin.selectedBook().id;
+      const bookList = plugin.data.library.books[bookId] || [];
+      const index = bookList.findIndex(w => String(w).toLowerCase() === String(word).toLowerCase());
+      const captured = plugin.data.library.words.find(card => card.word.toLowerCase() === String(word).toLowerCase());
+      plugin.deleteWords(BOOK_PATH, [word]).then(() => {
+        const notice = new Notice('已移出 ' + word + ' ', 5000);
+        const undo = document.createElement('button');
+        undo.textContent = '撤销';
+        undo.className = 'mod-cta ew-undo-btn';
+        undo.addEventListener('click', async () => {
+          notice.hide();
+          const list = plugin.data.library.books[bookId] ||= [];
+          if (!list.some(w => String(w).toLowerCase() === String(word).toLowerCase())) list.splice(Math.min(Math.max(index, 0), list.length), 0, word);
+          if (captured && !plugin.data.library.words.some(card => card.word.toLowerCase() === String(word).toLowerCase())) plugin.data.library.words.push(captured);
+          await plugin.persist();
+          plugin.refreshBook();
+        });
+        notice.noticeEl.appendChild(undo);
+      }).catch(error => new Notice(error.message || String(error)));
+    };
     const settle = () => {
       active = false; axis = null;
       cardEl.style.userSelect = '';
       const deleted = dx <= -110;
       setX(0, true); // 松手回弹
-      if (deleted) this.plugin.deleteWords(BOOK_PATH, [word]).catch(error => new Notice(error.message || String(error)));
+      if (deleted) confirmDelete();
       dx = 0;
     };
     wrap.addEventListener('pointerdown', event => {

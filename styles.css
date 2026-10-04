@@ -295,6 +295,7 @@ body.ew-immersive.ew-immersive .status-bar { display: none; }
 .ew-swipe-del svg { width: 18px; height: 18px; }
 .ew-swipe-card { position: relative; background: var(--ew-paper, var(--background-primary)); border: 1px solid var(--line); border-radius: 16px; margin: 0; max-width: none; touch-action: pan-y; }
 .ew-swipe-del.ew-swipe-armed { background: #b03d33; }
+.notice .ew-undo-btn { margin-left: 10px; padding: 3px 12px; border-radius: 6px; font-size: 12px; }
 
 /* ===== 复习模式（胶带即测试）===== */
 .ew-review-entry { display: flex; }
