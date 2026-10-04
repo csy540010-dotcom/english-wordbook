@@ -16,7 +16,7 @@ if (source.split(dictionaryMarker).length !== 2) throw Error('Expected exactly o
 
 const bundled = source
   .replace(contentMarker, () => `(function(){ const module = { exports: {} };\n${content}\nreturn module.exports; })()`)
-  .replace(dictionaryMarker, () => `const EMBEDDED_DICTIONARY = ${dictionary.trim()};`);
+  .replace(dictionaryMarker, () => `const EMBEDDED_DICTIONARY = ${JSON.stringify(dictionary)};`);
 
 fs.mkdirSync(path.join(__dirname, 'release'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, 'release', 'main.js'), bundled, 'utf8');

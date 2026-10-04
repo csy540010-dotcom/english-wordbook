@@ -1719,6 +1719,13 @@ async function writeCollectionShard(plugin, state, name, value) {
 async function saveShards(plugin, data) {
   if (plugin.__shardDisabled) return plugin.saveData(data);
   const adapter = plugin.app.vault.adapter;
+  const paths = shardPaths(plugin);
+  // Obsidian 的 adapter.write 不会自动创建父目录：目录缺失时分片写入会全部失败，
+  // 表现为迁移只写了瘦身版 data.json 而 data/ 从未出现。
+  for (const dir of [paths.dir, paths.words]) {
+    try { if (!(await adapter.exists(dir))) await adapter.mkdir(dir); }
+    catch (_) { /* 已存在或创建失败时交由后续写入抛出真实错误 */ }
+  }
   const state = plugin.__shardState ||= newShardState();
   const slim = { ...state.keep, storage: STORAGE_VERSION, ai: data.ai, directoryPlacement: data.directoryPlacement, sync: data.sync };
   delete slim.cards; delete slim.entries; delete slim.exercises; delete slim.exerciseAttempts; delete slim.quizArchive; delete slim.translations; delete slim.library;
