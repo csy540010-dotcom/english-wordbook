@@ -226,37 +226,38 @@ class WordbookView extends ItemView {
     if (last) this.scrollToCard(last, highlight);
   }
   attachSwipe(wrap, cardEl, strip, word) {
-    let startX = 0, startY = 0, dx = 0, active = false, axis = null;
+    let startX = 0, startY = 0, dx = 0, active = false, axis = null, dragged = false;
     const base = () => wrap.hasClass('ew-swipe-open') ? -88 : 0;
     const settle = () => {
       if (!active) return;
-      active = false; axis = null;
-      const open = dx <= -70;
+      active = false;
+      const open = axis === 'x' && dx <= -70;
       cardEl.style.transform = open ? 'translateX(-88px)' : '';
       cardEl.style.userSelect = '';
       if (open) wrap.addClass('ew-swipe-open'); else wrap.removeClass('ew-swipe-open');
       dx = 0;
+      window.setTimeout(() => { dragged = false; }, 60);
     };
-    cardEl.addEventListener('pointerdown', event => {
+    wrap.addEventListener('pointerdown', event => {
       if (event.button !== undefined && event.button !== 0) return;
-      startX = event.clientX; startY = event.clientY; dx = base(); active = true; axis = null;
-      try { cardEl.setPointerCapture(event.pointerId); } catch (_) { /* 老环境无捕获时拖出卡片会丢事件 */ }
+      startX = event.clientX; startY = event.clientY; dx = base(); active = true; axis = null; dragged = false;
+      try { wrap.setPointerCapture(event.pointerId); } catch (_) { /* 老环境无捕获时拖出范围会丢事件 */ }
     });
-    cardEl.addEventListener('pointermove', event => {
+    wrap.addEventListener('pointermove', event => {
       if (!active) return;
       const mx = event.clientX - startX, my = event.clientY - startY;
-      if (axis === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) axis = Math.abs(mx) > Math.abs(my) ? 'x' : 'y';
+      if (axis === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) { axis = Math.abs(mx) > Math.abs(my) ? 'x' : 'y'; if (axis === 'x') dragged = true; }
       if (axis !== 'x') return;
       cardEl.style.userSelect = 'none';
       dx = Math.max(-96, Math.min(0, base() + mx));
       cardEl.style.transform = 'translateX(' + dx + 'px)';
       event.preventDefault();
     });
-    cardEl.addEventListener('pointerup', settle);
-    cardEl.addEventListener('pointercancel', settle);
-    strip.addEventListener('click', async () => {
-      try { await this.plugin.deleteWords(BOOK_PATH, [word]); }
-      catch (error) { new Notice(error.message || String(error)); }
+    wrap.addEventListener('pointerup', settle);
+    wrap.addEventListener('pointercancel', settle);
+    strip.addEventListener('click', () => {
+      if (dragged) return; // 拖拽结束产生的 click 不算删除确认
+      this.plugin.deleteWords(BOOK_PATH, [word]).catch(error => new Notice(error.message || String(error)));
     });
   }
   ensureDailyStats() {
