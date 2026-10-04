@@ -874,11 +874,71 @@ function getAiTab(plugin) {
   return tab;
 }
 
+// ---------- 插件自助更新（检查 GitHub Release，下载后自动重载，无需重启 Obsidian）----------
+const UPDATE_REPO = 'csy540010-dotcom/english-wordbook';
+function parseVersion(value) { return String(value || '0').split('.').map(part => parseInt(part, 10) || 0); }
+function versionNewer(latest, current) {
+  const a = parseVersion(latest), b = parseVersion(current);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const x = a[i] || 0, y = b[i] || 0;
+    if (x > y) return true;
+    if (x < y) return false;
+  }
+  return false;
+}
+async function checkPluginUpdate(plugin) {
+  const response = await requestUrl({
+    url: 'https://api.github.com/repos/' + UPDATE_REPO + '/releases/latest',
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'english-wordbook' },
+    throw: false
+  });
+  if (response.status === 403 || response.status === 429) throw new Error('GitHub 接口访问受限（可能触发限流），请稍后再试。');
+  if (response.status >= 400) throw new Error('检查更新失败：GitHub 返回 ' + response.status + '。若网络无法直连 GitHub，请开启代理，或改用社区插件市场的更新。');
+  const release = response.json || {};
+  const latest = String(release.tag_name || '').replace(/^v/i, '');
+  const current = String(plugin.manifest.version || '');
+  if (!latest) throw new Error('检查更新失败：未找到版本号。');
+  if (!versionNewer(latest, current)) return { updated: false, latest, current };
+  const wanted = ['main.js', 'manifest.json', 'styles.css'];
+  const files = {};
+  for (const name of wanted) {
+    const asset = (release.assets || []).find(item => item.name === name);
+    if (!asset) throw new Error('更新包缺少 ' + name + '，请稍后在社区插件市场更新。');
+    const file = await requestUrl({ url: asset.browser_download_url, headers: { 'User-Agent': 'english-wordbook' }, throw: false });
+    if (file.status >= 400) throw new Error('下载 ' + name + ' 失败（' + file.status + '）。');
+    files[name] = file.arrayBuffer;
+  }
+  for (const name of wanted) {
+    await plugin.app.vault.adapter.writeBinary(plugin.manifest.dir + '/' + name, files[name]);
+  }
+  return { updated: true, latest, current };
+}
+function reloadPlugin(plugin) {
+  const app = plugin.app;
+  const id = plugin.manifest.id;
+  window.setTimeout(() => {
+    try { app.plugins.disablePlugin(id); app.plugins.enablePlugin(id); }
+    catch (error) { new Notice('更新已安装，请手动关闭再开启插件完成加载。', 8000); }
+  }, 600);
+}
+
 class WordbookSettingTab extends PluginSettingTab {
   constructor(app, plugin) { super(app, plugin); this.plugin = plugin; }
   display() {
     const container = this.containerEl;
     container.empty();
+    container.createEl('h2', { text: '插件更新' });
+    container.createEl('p', { text: '从 GitHub 检查新版本，一键安装并自动重载，无需重启 Obsidian。当前版本 ' + (this.plugin.manifest?.version || '') + '。' });
+    new Setting(container).setName('检查更新').setDesc('需要能访问 GitHub；网络受限时请改用社区插件市场的更新。').addButton(button => button.setButtonText('检查更新').onClick(async () => {
+      button.setDisabled(true);
+      button.setButtonText('检查中…');
+      try {
+        const result = await checkPluginUpdate(this.plugin);
+        if (!result.updated) { new Notice('已是最新版本 ' + result.current + '。'); }
+        else { new Notice('已更新到 ' + result.latest + '，正在重载插件…', 6000); reloadPlugin(this.plugin); }
+      } catch (error) { new Notice(error.message || String(error), 9000); }
+      finally { button.setDisabled(false); button.setButtonText('检查更新'); }
+    }));
     container.createEl('h2', { text: 'AI 接口（自带 Key 直连）' });
     container.createEl('p', { text: '配置后英语单词书将直连 OpenAI 兼容接口完成批改、查词和问 AI，不再依赖 Copilot 插件。密钥明文保存在本插件 data.json 中，请注意仓库同步范围。' });
     const settings = aiSettings(this.plugin);
@@ -2823,7 +2883,7 @@ module.exports = class WordbookPlugin extends Plugin {
     } catch (_) { /* Keep the original record if it cannot be read safely. */ }
   }
 };
-module.exports.testing = { parseCard, buildPrompt, WordCard, appendWord, readCorrection, AddWord, Practice, readTagged, normalizeEntry, validateQuiz, scoreQuiz, highlightedParts, validateTranslation, validateTranslationGrade, TranslationPractice, aiSettings, aiConfigured, chatCompletion, getAiTab, AI_PRESETS, WordbookSettingTab, initShardStorage, saveShards, readShards, deepMergeInto, mergeUnionIntoObj, mergeUnionIntoArr, mergeWordListInto, mergeLibraryIndexInto, shardFileName, shardPaths, newShardState, STORAGE_VERSION, catalogEntries, setImmersive, buildAppNav, syncSettings, syncConfigured, syncRequest, localEntities, applyRemoteEntity, runSync, markTapePeek, graduateReview, dueReviewWords, shuffleInPlace, dateKey };
+module.exports.testing = { parseCard, buildPrompt, WordCard, appendWord, readCorrection, AddWord, Practice, readTagged, normalizeEntry, validateQuiz, scoreQuiz, highlightedParts, validateTranslation, validateTranslationGrade, TranslationPractice, aiSettings, aiConfigured, chatCompletion, getAiTab, AI_PRESETS, WordbookSettingTab, initShardStorage, saveShards, readShards, deepMergeInto, mergeUnionIntoObj, mergeUnionIntoArr, mergeWordListInto, mergeLibraryIndexInto, shardFileName, shardPaths, newShardState, STORAGE_VERSION, catalogEntries, setImmersive, buildAppNav, syncSettings, syncConfigured, syncRequest, localEntities, applyRemoteEntity, runSync, markTapePeek, graduateReview, dueReviewWords, shuffleInPlace, dateKey, versionNewer, checkPluginUpdate };
 module.exports.testing.editHighlights = editHighlights;
 module.exports.testing.comparisonRanges = comparisonRanges;
 module.exports.testing.WordDirectory = WordDirectory;

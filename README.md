@@ -1,4 +1,4 @@
-﻿# English Wordbook (英语单词书)
+# English Wordbook (英语单词书)
 
 An Obsidian plugin for English learning: an offline ~13k-word dictionary, CET-4/6 wordbooks, AI-powered sentence grading and long-sentence translation practice — using your own OpenAI-compatible API key. All data stays in your vault.
 
@@ -24,7 +24,7 @@ Settings → English Wordbook → AI: choose a preset (Zhipu GLM, DeepSeek, Qwen
 
 ## Privacy
 
-No telemetry, no ads, no tracking. The author runs no servers that collect user data. Network requests go (1) directly to the AI provider you configure with your own API key — only the current word/sentence being practiced is sent — and (2) optionally to a self-hosted sync server you configure (learning data only). Your API key is stored in the plugin's `data.json` inside your vault.
+No telemetry, no ads, no tracking. The author runs no servers that collect user data. Network requests go (1) directly to the AI provider you configure with your own API key — only the current word/sentence being practiced is sent — (2) optionally to a self-hosted sync server you configure (learning data only), and (3) to GitHub only when you click "Check for updates" in the plugin settings. Your API key is stored in the plugin's `data.json` inside your vault.
 
 ## Development
 
