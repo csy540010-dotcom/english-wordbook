@@ -261,6 +261,33 @@ body.ew-immersive.ew-immersive .workspace-tab-header-container,
 body.ew-immersive.ew-immersive .view-header,
 body.ew-immersive.ew-immersive .status-bar { display: none; }
 
+/* ===== 侧栏改版：折叠词书 + 搜索框 + 今日统计 ===== */
+.ew-sidebar { padding: 12px 10px; }
+.ew-book-row { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; cursor: pointer; }
+.ew-book-row:hover { border-color: var(--accent); }
+.ew-book-name { font-size: 12px; font-weight: 600; color: var(--ink); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ew-book-count { font-size: 10px; color: var(--muted); }
+.ew-book-arrow { font-size: 10px; color: #9aa096; }
+.ew-book-list { background: #fff; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; margin-top: 6px; }
+.ew-book-item { display: flex; align-items: center; gap: 6px; padding: 8px 10px; font-size: 12px; color: #4d524a; cursor: pointer; }
+.ew-book-item:hover { background: var(--background-modifier-hover); }
+.ew-book-item.on { background: #e9f0e7; color: var(--accent); font-weight: 700; }
+.ew-book-item-n { margin-left: auto; font-size: 10px; color: var(--muted); }
+.ew-book-create { color: var(--accent); font-weight: 600; }
+.ew-sidebar-search { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; margin-top: 10px; }
+.ew-sidebar-search .ew-sidebar-search-ico { color: #9aa096; display: flex; }
+.ew-sidebar-search input { border: 0; outline: none; width: 100%; font-size: 12px; background: transparent; color: var(--ink); }
+.ew-daily-stats { margin-top: 10px; background: #e9f0e7; border-radius: 9px; padding: 9px 10px; font-size: 11px; color: #41564a; }
+.ew-daily-row { display: flex; justify-content: space-between; align-items: baseline; }
+.ew-daily-row .ew-daily-num { color: var(--accent); font-size: 13px; font-weight: 700; }
+.ew-daily-inline { display: block; margin: 8px 0 0; }
+.ew-mobile-topbar { padding: 0 0 10px; }
+.ew-card.ew-located, .ew-practice.ew-located { box-shadow: 0 0 0 3px #42776566; }
+
+/* ===== 手机搜索悬浮球 ===== */
+.ew-fab-search { position: absolute; right: 14px; bottom: 64px; width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 18px rgba(66, 119, 101, .45); z-index: 15; touch-action: none; }
+.ew-fab-search svg { width: 19px; height: 19px; }
+
 @media (prefers-reduced-motion: reduce) {
   .ew-splash, .ew-sheet-scrim, .ew-sheet { transition: none; }
 }

@@ -76,7 +76,7 @@ class WordbookView extends ItemView {
   async onOpen() {
     this.contentEl.addClass('ew-app-view');
     this.mountSplash();
-    await this.plugin.importWordNotes(); this.renderBook();
+    await this.plugin.importWordNotes(); this.renderBook(); this.startStudyTimer();
     this.addAction('maximize', '沉浸模式', () => setImmersive(this.plugin, !document.body.classList.contains('ew-immersive')));
     this.registerDomEvent(document, 'keydown', event => {
       if (event.key !== 'Escape') return;
@@ -104,33 +104,20 @@ class WordbookView extends ItemView {
     this.contentEl.classList.add('ew-library');
     const mount = child => { this.childrenCards.push(child); this.addChild(child); };
     const layout = this.contentEl.createDiv({ cls: 'ew-library-layout' });
-    const nav = layout.createEl('aside', { cls: 'ew-library-nav', attr: { 'aria-label': '单词目录' } });
-    mount(new WordDirectory(nav, this.plugin, BOOK_PATH));
+    const cards = this.plugin.libraryCards();
+    if (isMobile()) {
+      this.renderMobileTopbar(layout.createDiv({ cls: 'ew-mobile-topbar' }));
+    } else {
+      const sidebar = layout.createEl('aside', { cls: 'ew-library-nav ew-sidebar', attr: { 'aria-label': '词书与搜索' } });
+      mount(new BookSidebar(sidebar, this));
+    }
     const main = layout.createDiv({ cls: 'ew-library-main' });
     const header = main.createDiv({ cls: 'ew-library-header' });
     mount(new AddWord(header.createDiv({ cls: 'ew-library-add' }), this.plugin, BOOK_PATH));
-    const picker = header.createEl('label', { cls: 'ew-book-picker', text: '当前词书' });
-    const select = picker.createEl('select', { attr: { 'aria-label': '切换单词书' } });
-    for (const book of this.plugin.allBooks()) select.createEl('option', { text: this.plugin.bookLabel(book), attr: { value: book.id } });
-    select.value = this.plugin.data.library.selectedBook;
-    select.addEventListener('change', async () => { await this.plugin.selectBook(select.value); });
-    const currentBook = this.plugin.selectedBook();
-    const catalog = this.plugin.bookCatalog(currentBook);
-    const addedCount = this.plugin.libraryCards().filter(card => catalog.includes(card.word)).length;
-    const progressText = catalog.length ? `已添加 ${addedCount} / ${catalog.length}` : (currentBook.id.startsWith(CUSTOM_BOOK_PREFIX) && this.plugin.libraryCards().length ? `已添加 ${this.plugin.libraryCards().length}` : '');
-    if (progressText) picker.createSpan({ cls: 'ew-book-progress', text: progressText });
-    const manage = header.createDiv({ cls: 'ew-book-manage' });
-    manage.createEl('button', { text: '新建词书', cls: 'ew-text-button', attr: { type: 'button' } }).addEventListener('click', () => {
-      new BookNameModal(this.app, { title: '新建词书', submitText: '创建', onSubmit: name => this.plugin.createCustomBook(name) }).open();
-    });
-    if (currentBook.id.startsWith(CUSTOM_BOOK_PREFIX)) {
-      manage.createEl('button', { text: '重命名', cls: 'ew-text-button', attr: { type: 'button' } }).addEventListener('click', () => {
-        new BookNameModal(this.app, { title: '重命名词书', submitText: '保存', initial: currentBook.name, onSubmit: name => this.plugin.renameCustomBook(currentBook.id, name) }).open();
-      });
-      manage.createEl('button', { text: '删除词书', cls: 'ew-text-button', attr: { type: 'button' } }).addEventListener('click', () => {
-        new ConfirmModal(this.app, { title: '删除词书', message: `删除「${currentBook.name}」？书中的单词会一起移出本页，原有的学习记录仍保留。`, confirmText: '删除', onConfirm: () => this.plugin.deleteCustomBook(currentBook.id) }).open();
-      });
+    for (const card of cards) {
+      mount(new WordCard(main.createDiv(), this.plugin, card, BOOK_PATH + '::' + card.word));
     }
+    const catalog = this.plugin.bookCatalog(this.plugin.selectedBook());
     const addNext = after => {
       const button = main.createEl('button', { cls: 'ew-next-word', text: catalog.length ? '＋ 从当前词书添加下一个单词' : '＋ 添加单词' });
       button.disabled = !!this.plugin.addingBookWord;
@@ -142,18 +129,175 @@ class WordbookView extends ItemView {
         finally { button.disabled = false; }
       });
     };
-    const cards = this.plugin.libraryCards();
-    for (const card of cards) {
-      mount(new WordCard(main.createDiv(), this.plugin, card, BOOK_PATH + '::' + card.word));
-    }
     addNext(cards[cards.length - 1]?.word);
     if (isMobile()) buildAppNav(this);
+    if (isMobile()) this.renderSearchBall();
+    this.locateLastCard();
+  }
+  renderMobileTopbar(el) {
+    const plugin = this.plugin;
+    const current = plugin.selectedBook();
+    const row = el.createDiv({ cls: 'ew-book-row', attr: { role: 'button', 'aria-label': '切换词书' } });
+    row.createSpan({ cls: 'ew-book-name', text: current.name });
+    row.createSpan({ cls: 'ew-book-count', text: String(plugin.libraryCards().length) });
+    row.createSpan({ cls: 'ew-book-arrow', text: '▸' });
+    row.addEventListener('click', () => openBookSheet(this));
+    const stats = plugin.dailyStats?.[todayKey()] || { words: 0, minutes: 0 };
+    const bar = el.createDiv({ cls: 'ew-daily-stats ew-daily-inline' });
+    bar.createSpan({ text: '今日已学 ' + stats.words + ' 词 · 用时 ' + stats.minutes + ' 分钟' });
+  }
+  filterCards(query) {
+    const q = String(query || '').trim().toLowerCase();
+    for (const child of this.childrenCards) {
+      if (!(child instanceof WordCard)) continue;
+      child.containerEl.hidden = !!q && !child.card.word.toLowerCase().includes(q);
+    }
+  }
+  locateMatch(query) {
+    const q = String(query || '').trim().toLowerCase();
+    if (!q) return;
+    const target = this.childrenCards.find(child => child instanceof WordCard && !child.containerEl.hidden && child.card.word.toLowerCase().includes(q));
+    if (target) this.scrollToCard(target);
+  }
+  scrollToCard(cardComponent, highlight = true) {
+    const el = cardComponent.containerEl;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!highlight) return;
+    el.classList.add('ew-located');
+    window.setTimeout(() => el.classList.remove('ew-located'), 1600);
+  }
+  locateLastCard({ highlight = true } = {}) {
+    const visible = this.childrenCards.filter(child => child instanceof WordCard && !child.containerEl.hidden);
+    const last = visible[visible.length - 1];
+    if (last) this.scrollToCard(last, highlight);
+  }
+  ensureDailyStats() {
+    this.data.dailyStats ||= {};
+    const key = todayKey();
+    this.data.dailyStats[key] ||= { words: 0, minutes: 0 };
+    const keys = Object.keys(this.data.dailyStats).sort();
+    while (keys.length > 60) delete this.data.dailyStats[keys.shift()];
+    return this.data.dailyStats[key];
+  }
+  startStudyTimer() {
+    this.stopStudyTimer();
+    this.studyTick = this.registerInterval(window.setInterval(() => {
+      if (this.unloaded) return;
+      const stats = this.ensureDailyStats();
+      stats.minutes += 1;
+      void this.persist();
+    }, 60000));
+  }
+  stopStudyTimer() {
+    if (this.studyTick) { window.clearInterval(this.studyTick); this.studyTick = null; }
+  }
+  renderSearchBall() {
+    const ball = this.contentEl.createDiv({ cls: 'ew-fab-search', attr: { role: 'button', 'aria-label': '搜索单词' } });
+    setIcon(ball, 'search');
+    let startX = 0, startY = 0, moved = false;
+    ball.addEventListener('pointerdown', event => {
+      startX = event.clientX; startY = event.clientY; moved = false;
+      try { ball.setPointerCapture(event.pointerId); } catch (_) { /* 不支持捕获时仅点击 */ }
+    });
+    ball.addEventListener('pointermove', event => {
+      if (!moved && Math.abs(event.clientX - startX) + Math.abs(event.clientY - startY) < 8) return;
+      moved = true;
+      const bounds = this.contentEl.getBoundingClientRect();
+      const box = ball.getBoundingClientRect();
+      let left = box.left - bounds.left + (event.clientX - startX);
+      let top = box.top - bounds.top + (event.clientY - startY);
+      left = Math.max(6, Math.min(bounds.width - box.width - 6, left));
+      top = Math.max(6, Math.min(bounds.height - box.height - 6, top));
+      ball.style.left = left + 'px'; ball.style.top = top + 'px';
+      ball.style.right = 'auto'; ball.style.bottom = 'auto';
+      startX = event.clientX; startY = event.clientY;
+    });
+    ball.addEventListener('pointerup', () => { if (!moved) this.openSearchSheet(); });
+  }
+  openSearchSheet() {
+    openBottomSheet(this.plugin, {
+      title: '搜索单词', placeholder: '输入单词', emptyText: '没有匹配的单词。',
+      renderItems: (list, query, close) => {
+        let count = 0;
+        const q = query.trim().toLowerCase();
+        for (const card of this.plugin.libraryCards()) {
+          if (q && !card.word.toLowerCase().includes(q)) continue;
+          const row = list.createDiv({ cls: 'ew-sheet-row' });
+          row.createDiv({ cls: 'ew-sheet-row-title', text: card.word });
+          if (card.meaning) row.createDiv({ cls: 'ew-sheet-row-sub', text: card.meaning });
+          row.addEventListener('click', () => {
+            close();
+            const target = this.childrenCards.find(child => child instanceof WordCard && child.card.word.toLowerCase() === card.word.toLowerCase());
+            if (target) this.scrollToCard(target);
+          });
+          count++;
+        }
+        return count;
+      }
+    });
   }
   async onClose() {
+    this.stopStudyTimer();
     closeActiveSheet(this.plugin);
     if (document.body.classList.contains('ew-immersive')) setImmersive(this.plugin, false);
     for (const child of this.childrenCards) this.removeChild(child); this.childrenCards = [];
   }
+}
+
+class BookSidebar extends MarkdownRenderChild {
+  constructor(el, view) { super(el); this.view = view; this.plugin = view.plugin; this.expanded = false; }
+  onload() { this.render(); }
+  render() {
+    const el = this.containerEl;
+    el.replaceChildren();
+    const plugin = this.plugin;
+    const current = plugin.selectedBook();
+    const row = el.createDiv({ cls: 'ew-book-row', attr: { role: 'button', 'aria-label': '展开词书列表' } });
+    row.createSpan({ cls: 'ew-book-name', text: current.name });
+    row.createSpan({ cls: 'ew-book-count', text: String(plugin.libraryCards().length) });
+    row.createSpan({ cls: 'ew-book-arrow', text: this.expanded ? '▾' : '▸' });
+    const list = el.createDiv({ cls: 'ew-book-list' });
+    if (!this.expanded) list.setAttribute('hidden', '');
+    for (const book of plugin.allBooks()) {
+      const item = list.createDiv({ cls: 'ew-book-item' + (book.id === current.id ? ' on' : '') });
+      item.createSpan({ text: book.name });
+      item.createSpan({ cls: 'ew-book-item-n', text: String((plugin.data.library.books[book.id] || []).length) });
+      item.addEventListener('click', async () => {
+        this.expanded = false;
+        if (book.id !== current.id) await plugin.selectBook(book.id); else this.render();
+      });
+    }
+    const create = list.createDiv({ cls: 'ew-book-item ew-book-create', text: '＋ 新建词书' });
+    create.addEventListener('click', () => new BookNameModal(this.view.app, { title: '新建词书', submitText: '创建', onSubmit: name => plugin.createCustomBook(name) }).open());
+    if (current.id.startsWith(CUSTOM_BOOK_PREFIX)) {
+      const rename = list.createDiv({ cls: 'ew-book-item ew-book-create', text: '重命名当前词书' });
+      rename.addEventListener('click', () => new BookNameModal(this.view.app, { title: '重命名词书', submitText: '保存', initial: current.name, onSubmit: name => plugin.renameCustomBook(current.id, name) }).open());
+      const remove = list.createDiv({ cls: 'ew-book-item ew-book-create', text: '删除当前词书' });
+      remove.addEventListener('click', () => new ConfirmModal(this.view.app, { title: '删除词书', message: `删除「${current.name}」？书中的单词会一起移出本页，原有的学习记录仍保留。`, confirmText: '删除', onConfirm: () => plugin.deleteCustomBook(current.id) }).open());
+    }
+    row.addEventListener('click', () => { this.expanded = !this.expanded; this.render(); });
+    const search = el.createDiv({ cls: 'ew-sidebar-search' });
+    setIcon(search.createSpan({ cls: 'ew-sidebar-search-ico' }), 'search');
+    const input = search.createEl('input', { attr: { type: 'search', placeholder: '搜索单词，回车定位', 'aria-label': '搜索单词' } });
+    input.addEventListener('input', () => this.view.filterCards(input.value));
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') { event.preventDefault(); this.view.locateMatch(input.value); }
+      if (event.key === 'Escape') { input.value = ''; this.view.filterCards(''); }
+    });
+    const stats = plugin.dailyStats?.[todayKey()] || { words: 0, minutes: 0 };
+    const block = el.createDiv({ cls: 'ew-daily-stats' });
+    const rowWords = block.createDiv({ cls: 'ew-daily-row' });
+    rowWords.createSpan({ text: '今日已学' });
+    rowWords.createSpan({ cls: 'ew-daily-num', text: stats.words + ' 词' });
+    const rowTime = block.createDiv({ cls: 'ew-daily-row' });
+    rowTime.createSpan({ text: '今日用时' });
+    rowTime.createSpan({ cls: 'ew-daily-num', text: stats.minutes + ' 分钟' });
+  }
+}
+
+function todayKey() {
+  const now = new Date();
+  return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
 }
 
 function editHighlights(ranges, start, end, length, remove = false) {
@@ -1688,7 +1832,7 @@ async function saveShards(plugin, data) {
     catch (_) { /* 已存在或创建失败时交由后续写入抛出真实错误 */ }
   }
   const state = plugin.__shardState ||= newShardState();
-  const slim = { ...state.keep, storage: STORAGE_VERSION, ai: data.ai, directoryPlacement: data.directoryPlacement, sync: data.sync };
+  const slim = { ...state.keep, storage: STORAGE_VERSION, ai: data.ai, directoryPlacement: data.directoryPlacement, sync: data.sync, dailyStats: data.dailyStats };
   delete slim.cards; delete slim.entries; delete slim.exercises; delete slim.exerciseAttempts; delete slim.quizArchive; delete slim.translations; delete slim.library;
   const slimJson = JSON.stringify(slim, null, 2);
   if (state.saved['__data'] !== slimJson) {
@@ -2393,6 +2537,7 @@ module.exports = class WordbookPlugin extends Plugin {
       const existing = this.data.library.words.find(item => item.word.toLowerCase() === card.word.toLowerCase());
       if (!existing) { const entry = await this.lookupWord(card.word); this.data.library.words.push({ ...card, phonetic: entry.phonetic, meaning: entry.meaning }); }
       list.push(existing?.word || card.word);
+      const stats = this.ensureDailyStats(); stats.words += 1;
       await this.persist(); this.refreshBook(); return;
     }
     const file = this.app.vault.getAbstractFileByPath(path);
