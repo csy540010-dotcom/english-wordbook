@@ -1185,21 +1185,12 @@ class SentenceCard extends MarkdownRenderChild {
     this.owner.highlightText(head, 'ew-word-title', this.card.word, { corrected: '@word', mode: 'shared' }, 'word', [], 'h2');
     this.owner.foldButton = head.createEl('button', { cls: 'ew-fold-button', attr: { 'aria-controls': this.owner.practiceBody.id } });
     this.owner.foldButton.addEventListener('click', () => this.owner.setCollapsed(!this.owner.practiceBody.hidden));
-    if (aiConfigured(this.plugin)) {
-      const aiSettingsButton = head.createEl('button', { text: 'AI 设置', cls: 'ew-text-button' });
-      aiSettingsButton.addEventListener('click', () => {
-        const setting = this.plugin.app.setting;
-        if (setting?.openTabById) { setting.open(); setting.openTabById('english-wordbook'); }
-        else new Notice('请在「设置 → 英语单词书」中管理 AI 接口。');
-      });
-    } else {
-      const copilot = head.createEl('button', { text: '打开 Copilot', cls: 'ew-text-button' });
-      copilot.addEventListener('click', () => {
-        const plugin = this.plugin.app.plugins?.plugins?.copilot;
-        if (plugin?.activateView) void plugin.activateView();
-        else new Notice('请先启用 Copilot 插件。');
-      });
-    }
+    const aiSettingsButton = head.createEl('button', { text: aiConfigured(this.plugin) ? 'AI 设置' : '配置 AI', cls: 'ew-text-button' });
+    aiSettingsButton.addEventListener('click', () => {
+      const setting = this.plugin.app.setting;
+      if (setting?.openTabById) { setting.open(); setting.openTabById('english-wordbook'); }
+      else new Notice('请在「设置 → 英语单词书」中管理 AI 接口。');
+    });
     const remove = head.createEl('button', { text: '删除', cls: 'ew-word-delete ew-text-button' });
     const confirm = head.createDiv({ cls: 'ew-delete-confirm' }); confirm.hidden = true;
     confirm.createSpan({ text: `从本页删除 ${this.card.word}？收藏和批注保留。` });
@@ -1333,7 +1324,7 @@ class SentenceCard extends MarkdownRenderChild {
     this.progressButton.hidden = true;
     this.progressButton.addEventListener('click', () => {
       if (aiConfigured(this.plugin)) new Notice('AI 正在处理当前任务，完成后会自动保存。');
-      else this.plugin.app.plugins.plugins.copilot?.activateView?.();
+      else new Notice('尚未配置 AI：请在「设置 → 英语单词书」中选择服务商并填写接口地址、模型名和 API Key。');
     });
     this.registerInterval(window.setInterval(() => { void this.refresh(); }, 1800));
     this.plugin.cards.add(this);

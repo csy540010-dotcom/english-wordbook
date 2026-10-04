@@ -1,4 +1,34 @@
-# 英语单词书 0.21.0
+# 英语单词书（English Wordbook for Obsidian）
+
+Obsidian 学习插件：内置 1.3 万词条离线词典与完整四六级词书，提供造句批改、长难句英译中、收藏批注高光等练习流。AI 能力通过「自带 Key 直连」OpenAI 兼容接口实现，数据全部保存在你的仓库本地。
+
+> An Obsidian learning plugin with an offline 13k-word dictionary, CET-4/6 wordbooks, AI sentence grading and long-sentence translation practice — using your own OpenAI-compatible API key. All data stays in your vault.
+
+## 功能亮点
+
+- **离线词典**：内置约 1.3 万词条（覆盖四六级、考研、托福、雅思词表），查词、音标、释义即时返回，无需联网
+- **四六级词书**：四级 4544 词、六级 3991 词，支持自定义词书与生词管理
+- **造句批改**：「自己造句」与「给我句子」两种模式，AI 按句给出错误原文、原因与修改建议
+- **长难句练习**：英译中训练，支持意译判分，附参考表达与句子结构解析
+- **收藏与批注**：句子收藏、我的批注、高光标记、文字样式编辑、撤销/重做
+- **App 感界面**：启动页过渡、手机端底部导航与抽屉、沉浸模式（隐藏全部 Obsidian 界面元素）
+- **多设备互通**：分片存储 + 冲突并集合并，配合文件同步使用，或用内置的自建同步后端
+
+## 安装
+
+- **社区插件市场**：设置 → 第三方插件 → 浏览 → 搜索「英语单词书」
+- **手动安装**：从 [Releases](../../releases) 下载 main.js、manifest.json、styles.css，放入 `<仓库>/.obsidian/plugins/english-wordbook/` 后启用
+- **BRAT**：将本仓库加入 BRAT 即可安装与更新
+
+## 配置 AI（自带 Key 直连）
+
+设置 → 英语单词书 → AI 接口：选择服务商预设（智谱 GLM、DeepSeek、通义千问、Kimi、硅基流动或自定义 OpenAI 兼容接口），填写 API Key 与模型名，点「发送测试」验证连接。未配置 AI 时，词典查词与内置造句提示可完全离线使用，批改类功能会提示先完成配置。每台设备需分别配置。
+
+## 隐私
+
+本插件不含遥测、广告或追踪代码，作者不运营任何收集用户数据的服务器；详见下方「隐私与数据」一节。
+
+## 版本记录
 
 本版新增可选的自建后端实体级同步（与文件同步互相独立，可只用其一）：
 
