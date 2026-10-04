@@ -1,7 +1,7 @@
 {
   "id": "english-wordbook",
   "name": "English Wordbook",
-  "version": "0.24.0",
+  "version": "0.24.1",
   "minAppVersion": "1.5.0",
   "description": "单词释义、造句批改与折叠收藏、四六级长难句英译中练习；自带 Key 直连 AI，多设备同步，App 感界面.",
   "author": "csy540010-dotcom",

@@ -118,10 +118,14 @@ class WordbookView extends ItemView {
     mount(new AddWord(header.createDiv({ cls: 'ew-library-add' }), this.plugin, BOOK_PATH));
     const dueCount = dueReviewWords(this.plugin, this.plugin.data.library.books[this.plugin.selectedBook().id] || []).length;
     if (!this.reviewModeRequested) {
-      const reviewButton = header.createDiv({ cls: 'ew-review-entry' });
-      const btn = reviewButton.createEl('button', { text: dueCount ? `🎯 复习 ${dueCount}` : '🎯 复习', cls: 'ew-text-button', attr: { type: 'button' } });
+      const reviewEntry = header.createDiv({ cls: 'ew-review-entry' });
+      const label = dueCount ? `🎯 复习模式 · 待复习 ${dueCount} 词` : '🎯 复习模式';
+      const hint = dueCount
+        ? `点击开始复习：今天有 ${dueCount} 个单词到期。复习时想不起来的词明天再来，没点开的词本轮毕业。`
+        : '暂无到期的单词。学习时点击「点击查看释义」胶带的词会自动进入复习队列，次日到期。';
+      const btn = reviewEntry.createEl('button', { text: label, cls: 'ew-text-button', attr: { type: 'button', title: hint, 'aria-label': hint } });
       btn.addEventListener('click', () => { this.reviewModeRequested = true; this.renderBook(); });
-      if (!dueCount) reviewButton.addClass('ew-review-empty');
+      if (dueCount) reviewEntry.addClass('ew-review-due');
     }
     if (this.reviewModeRequested) {
       const bar = main.createDiv({ cls: 'ew-review-bar' });
