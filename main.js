@@ -98,13 +98,15 @@ class WordbookView extends ItemView {
     }, reduced ? 0 : 520);
   }
   renderBook() {
+    this.reviewActive = false;
+    this.reviewQueueKeys = null;
     for (const child of this.childrenCards) this.removeChild(child);
     this.childrenCards = [];
     this.contentEl.replaceChildren();
     this.contentEl.classList.add('ew-library');
     const mount = child => { this.childrenCards.push(child); this.addChild(child); };
     const layout = this.contentEl.createDiv({ cls: 'ew-library-layout' });
-    const cards = this.plugin.libraryCards();
+    let cards = this.plugin.libraryCards();
     if (isMobile()) {
       this.renderMobileTopbar(layout.createDiv({ cls: 'ew-mobile-topbar' }));
     } else {
@@ -114,13 +116,49 @@ class WordbookView extends ItemView {
     const main = layout.createDiv({ cls: 'ew-library-main' });
     const header = main.createDiv({ cls: 'ew-library-header' });
     mount(new AddWord(header.createDiv({ cls: 'ew-library-add' }), this.plugin, BOOK_PATH));
+    const dueCount = dueReviewWords(this.plugin, this.plugin.data.library.books[this.plugin.selectedBook().id] || []).length;
+    if (!this.reviewModeRequested) {
+      const reviewButton = header.createDiv({ cls: 'ew-review-entry' });
+      const btn = reviewButton.createEl('button', { text: dueCount ? `🎯 复习 ${dueCount}` : '🎯 复习', cls: 'ew-text-button', attr: { type: 'button' } });
+      btn.addEventListener('click', () => { this.reviewModeRequested = true; this.renderBook(); });
+      if (!dueCount) reviewButton.addClass('ew-review-empty');
+    }
+    if (this.reviewModeRequested) {
+      const bar = main.createDiv({ cls: 'ew-review-bar' });
+      const dueKeys = dueReviewWords(this.plugin, this.plugin.data.library.books[this.plugin.selectedBook().id] || []);
+      this.reviewQueueKeys = shuffleInPlace(dueKeys.slice());
+      this.reviewSessionTaped = new Set();
+      bar.createSpan({ cls: 'ew-review-badge', text: '🎯 复习模式' });
+      bar.createSpan({ cls: 'ew-review-note', text: this.reviewQueueKeys.length ? `今日到期 ${this.reviewQueueKeys.length} 词 · 已打乱` : '今天没有到期的词（学习时点胶带的词会进入队列）' });
+      const shuffleBtn = bar.createEl('button', { text: '🔄 打乱', cls: 'ew-review-btn', attr: { type: 'button' } });
+      shuffleBtn.addEventListener('click', () => { this.renderBook(); });
+      const finishBtn = bar.createEl('button', { text: '✓ 完成本轮', cls: 'ew-review-btn', attr: { type: 'button' } });
+      finishBtn.addEventListener('click', () => this.finishReviewRound());
+      const allBtn = bar.createEl('button', { text: '整本模式', cls: 'ew-review-btn ew-review-ghost', attr: { type: 'button' } });
+      allBtn.addEventListener('click', () => { this.reviewWholeBook = !this.reviewWholeBook; this.renderBook(); });
+      const exitBtn = bar.createEl('button', { text: '退出复习', cls: 'ew-review-btn ew-review-ghost', attr: { type: 'button' } });
+      exitBtn.addEventListener('click', () => { this.reviewModeRequested = false; this.reviewWholeBook = false; this.renderBook(); });
+      if (this.reviewWholeBook) bar.addClass('ew-review-whole');
+    }
+    let reviewKeys = null;
+    if (this.reviewModeRequested) {
+      if (this.reviewWholeBook) {
+        reviewKeys = shuffleInPlace(cards.map(card => card.word.toLowerCase()));
+      } else if (this.reviewQueueKeys) {
+        reviewKeys = this.reviewQueueKeys;
+      }
+      if (reviewKeys) {
+        const byWord = new Map(cards.map(card => [card.word.toLowerCase(), card]));
+        cards = reviewKeys.map(key => byWord.get(key)).filter(Boolean);
+      }
+    }
     for (const card of cards) {
       const wrap = main.createDiv({ cls: 'ew-swipe-wrap' });
       const strip = wrap.createDiv({ cls: 'ew-swipe-del', attr: { role: 'button', 'aria-label': '删除 ' + card.word } });
       setIcon(strip.createSpan({ cls: 'ew-swipe-del-ico' }), 'trash');
       strip.createSpan({ text: '删除' });
       const cardEl = wrap.createDiv({ cls: 'ew-swipe-card' });
-      mount(new WordCard(cardEl, this.plugin, card, BOOK_PATH + '::' + card.word));
+      mount(new WordCard(cardEl, this.plugin, card, BOOK_PATH + '::' + card.word, { reviewMode: this.reviewModeRequested }));
       this.attachSwipe(wrap, cardEl, strip, card.word);
     }
     const catalog = this.plugin.bookCatalog(this.plugin.selectedBook());
@@ -164,6 +202,16 @@ class WordbookView extends ItemView {
     if (!q) return;
     const target = this.childrenCards.find(child => child instanceof WordCard && !child.containerEl.hidden && child.card.word.toLowerCase().includes(q));
     if (target) this.scrollToCard(target);
+  }
+  finishReviewRound() {
+    const queue = this.plugin.data.review || {};
+    const today = dateKey();
+    const inBook = new Set((this.plugin.data.library.books[this.plugin.selectedBook().id] || []).map(word => String(word).toLowerCase()));
+    const dueNow = Object.keys(queue).filter(key => queue[key].due <= today && inBook.has(key));
+    graduateReview(this.plugin, dueNow);
+    const taped = dueNow.filter(key => (this.plugin.data.review?.[key]?.due || '') > today).length;
+    new Notice(`本轮完成：毕业 ${dueNow.length} 词` + (taped ? ` · 明日再来 ${taped} 词` : ''), 6000);
+    this.renderBook();
   }
   scrollToCard(cardComponent, highlight = true) {
     const el = cardComponent.containerEl;
@@ -905,9 +953,9 @@ class Practice extends MarkdownRenderChild {
 }
 
 class WordCard extends MarkdownRenderChild {
-  constructor(el, plugin, card, key) {
+  constructor(el, plugin, card, key, options = {}) {
     super(el);
-    Object.assign(this, { plugin, card, key, rows: [] });
+    Object.assign(this, { plugin, card, key, rows: [], reviewMode: !!options.reviewMode });
   }
   onload() {
     this.containerEl.classList.add('ew-card');
@@ -1368,7 +1416,15 @@ class SentenceCard extends MarkdownRenderChild {
     this.definition.id = 'ew-meaning-' + randomUUID();
     this.tapeButton.setAttribute('aria-controls', this.definition.id);
     this.revealMeaning(false);
-    this.tapeButton.addEventListener('click', event => { event.stopPropagation?.(); this.revealMeaning(!this.meaningRevealed); });
+    this.tapeButton.addEventListener('click', event => {
+      event.stopPropagation?.();
+      const goingToReveal = !this.meaningRevealed;
+      this.revealMeaning(goingToReveal);
+      if (goingToReveal && this.key.startsWith(BOOK_PATH + '::')) {
+        markTapePeek(this.plugin, this.card.word, this.reviewMode);
+        if (this.reviewMode) { this.tapeButton.textContent = '✓ 已安排明日再来'; this.containerEl.addClass('ew-review-taped'); }
+      }
+    });
     this.definition.addEventListener('click', event => {
       if (event.target?.closest?.('button,input,textarea,select,.ew-highlight-tools,.ew-text-editor')) return;
       if (this.definition.ownerDocument?.getSelection()?.toString()) return;
@@ -1697,12 +1753,59 @@ class SentenceCard extends MarkdownRenderChild {
 // 写入前若发现磁盘文件被其他设备更新过，先存冲突副本再做并集合并，保证不丢数据。
 // data.json 只保留设置（ai、directoryPlacement）与版本标记；迁移时全量备份到 data.pre-shard.json。
 const STORAGE_VERSION = 'sharded-v1';
-const SHARDED_KEYS = new Set(['cards', 'entries', 'exercises', 'exerciseAttempts', 'quizArchive', 'translations', 'library']);
-const SHARD_FIELDS = { entries: 'entries', translations: 'translations', cards: 'cards', exercises: 'exercises', exerciseAttempts: 'attempts', quizArchive: 'archive' };
+const SHARDED_KEYS = new Set(['cards', 'entries', 'exercises', 'exerciseAttempts', 'quizArchive', 'translations', 'library', 'review']);
+const SHARD_FIELDS = { entries: 'entries', translations: 'translations', cards: 'cards', exercises: 'exercises', exerciseAttempts: 'attempts', quizArchive: 'archive', review: 'review' };
+
+// ---------- 复习队列（胶带即测试）----------
+// 规则：学习时点胶带 = 不熟 → 入队，次日到期；复习时还点 = 明天再来；复习整轮没点 = 毕业出队。
+// 记录结构：{ [word 小写]: { due: 'YYYY-MM-DD', lastTape: 'YYYY-MM-DD', added: 'YYYY-MM-DD' } }
+function dateKey(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function reviewQueue(plugin) { return plugin.data.review ||= {}; }
+function markTapePeek(plugin, word, inReview) {
+  const queue = reviewQueue(plugin);
+  const key = String(word).toLowerCase();
+  const record = queue[key];
+  const today = dateKey();
+  for (const k of Object.keys(queue)) if (k !== key && k.toLowerCase() === key) delete queue[k];
+  if (inReview) {
+    // 复习中点胶带 = 还是不会 → 明天再来（整本模式里点到的词也由此入队）
+    queue[key] = { ...(record || {}), due: dateKey(1), lastTape: today, added: record?.added || today };
+  } else {
+    // 学习时点胶带 = 不熟 → 入队；已有未来的到期日则保留，不改期
+    const due = record?.due && record.due > today ? record.due : dateKey(1);
+    queue[key] = { ...(record || {}), due, lastTape: today, added: record?.added || today };
+  }
+  void plugin.persist();
+}
+function graduateReview(plugin, words) {
+  const queue = reviewQueue(plugin);
+  let changed = false;
+  for (const word of words) { const key = String(word).toLowerCase(); if (queue[key]) { delete queue[key]; changed = true; } }
+  if (changed) void plugin.persist();
+}
+function dueReviewWords(plugin, bookWords) {
+  const queue = reviewQueue(plugin);
+  const today = dateKey();
+  const scope = new Set((bookWords || []).map(word => String(word).toLowerCase()));
+  return Object.entries(queue)
+    .filter(([key, record]) => record.due <= today && (scope.size === 0 || scope.has(key)))
+    .map(([key]) => key);
+}
+function shuffleInPlace(list) {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+}
 
 function shardPaths(plugin) {
   const dir = plugin.manifest.dir + '/data';
-  return { dir, words: dir + '/words', libraryIndex: dir + '/library-index.json', entries: dir + '/entries.json', translations: dir + '/translations.json', cards: dir + '/cards.json', exercises: dir + '/exercises.json', exerciseAttempts: dir + '/exercise-attempts.json', quizArchive: dir + '/quiz-archive.json' };
+  return { dir, words: dir + '/words', libraryIndex: dir + '/library-index.json', entries: dir + '/entries.json', translations: dir + '/translations.json', cards: dir + '/cards.json', exercises: dir + '/exercises.json', exerciseAttempts: dir + '/exercise-attempts.json', quizArchive: dir + '/quiz-archive.json', review: dir + '/review.json' };
 }
 
 function shardFileName(word) {
@@ -1807,6 +1910,7 @@ function mergeLegacyIntoShardData(shardData, raw) {
   mergeUnionIntoObj(shardData.translations, raw.translations || {});
   mergeUnionIntoObj(shardData.cards, raw.cards || {});
   mergeUnionIntoObj(shardData.quizArchive, raw.quizArchive || {});
+  mergeUnionIntoObj(shardData.review ||= {}, raw.review || {});
   mergeUnionIntoArr(shardData.exerciseAttempts, raw.exerciseAttempts || []);
   deepMergeInto(shardData.exercises, raw.exercises || {});
   shardData.library ||= {};
@@ -1896,6 +2000,7 @@ async function saveShards(plugin, data) {
   await writeCollectionShard(plugin, state, 'exercises', data.exercises ||= {});
   await writeCollectionShard(plugin, state, 'exerciseAttempts', data.exerciseAttempts ||= []);
   await writeCollectionShard(plugin, state, 'quizArchive', data.quizArchive ||= {});
+  await writeCollectionShard(plugin, state, 'review', data.review ||= {});
   await writeCollectionShard(plugin, state, 'libraryIndex', data.library ||= { words: [] });
   if (plugin.syncAfterSave) plugin.syncAfterSave();
 }
@@ -1915,7 +2020,7 @@ function normalizeLegacyData(data) {
   // 旧版（尤其久未升级的手机端）data.json 可能缺少 0.21 的字段，
   // 视图层与 importWordNotes 直接解引用会崩溃；这里统一补齐默认结构。
   data.entries ||= {}; data.cards ||= {}; data.exercises ||= {};
-  data.exerciseAttempts ||= []; data.quizArchive ||= {}; data.translations ||= {};
+  data.exerciseAttempts ||= []; data.quizArchive ||= {}; data.translations ||= {}; data.review ||= {};
   data.library ||= { words: [], books: {}, customBooks: [], selectedBook: BUILTIN_BOOKS[0].id, importedNotes: [] };
   data.library.words ||= []; data.library.books ||= {}; data.library.customBooks ||= [];
   data.library.selectedBook ||= BUILTIN_BOOKS[0].id;
@@ -2681,7 +2786,7 @@ module.exports = class WordbookPlugin extends Plugin {
     } catch (_) { /* Keep the original record if it cannot be read safely. */ }
   }
 };
-module.exports.testing = { parseCard, buildPrompt, WordCard, appendWord, readCorrection, AddWord, Practice, readTagged, normalizeEntry, validateQuiz, scoreQuiz, highlightedParts, validateTranslation, validateTranslationGrade, TranslationPractice, aiSettings, aiConfigured, chatCompletion, getAiTab, AI_PRESETS, WordbookSettingTab, initShardStorage, saveShards, readShards, deepMergeInto, mergeUnionIntoObj, mergeUnionIntoArr, mergeWordListInto, mergeLibraryIndexInto, shardFileName, shardPaths, newShardState, STORAGE_VERSION, catalogEntries, setImmersive, buildAppNav, syncSettings, syncConfigured, syncRequest, localEntities, applyRemoteEntity, runSync };
+module.exports.testing = { parseCard, buildPrompt, WordCard, appendWord, readCorrection, AddWord, Practice, readTagged, normalizeEntry, validateQuiz, scoreQuiz, highlightedParts, validateTranslation, validateTranslationGrade, TranslationPractice, aiSettings, aiConfigured, chatCompletion, getAiTab, AI_PRESETS, WordbookSettingTab, initShardStorage, saveShards, readShards, deepMergeInto, mergeUnionIntoObj, mergeUnionIntoArr, mergeWordListInto, mergeLibraryIndexInto, shardFileName, shardPaths, newShardState, STORAGE_VERSION, catalogEntries, setImmersive, buildAppNav, syncSettings, syncConfigured, syncRequest, localEntities, applyRemoteEntity, runSync, markTapePeek, graduateReview, dueReviewWords, shuffleInPlace, dateKey };
 module.exports.testing.editHighlights = editHighlights;
 module.exports.testing.comparisonRanges = comparisonRanges;
 module.exports.testing.WordDirectory = WordDirectory;

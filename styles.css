@@ -295,6 +295,18 @@ body.ew-immersive.ew-immersive .status-bar { display: none; }
 .ew-swipe-del svg { width: 18px; height: 18px; }
 .ew-swipe-card { position: relative; background: var(--paper); border: 1px solid var(--line); border-right: 0; border-radius: 16px 0 0 16px; touch-action: pan-y; }
 
+/* ===== 复习模式（胶带即测试）===== */
+.ew-review-entry { display: flex; }
+.ew-review-entry.ew-review-empty { opacity: .6; }
+.ew-review-bar { background: #e9f0e7; border: 1px solid #b9cfbf; border-radius: 12px; padding: 9px 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 13px; }
+.ew-review-badge { background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; border-radius: 7px; padding: 4px 9px; }
+.ew-review-note { font-size: 11px; color: #5a6b5e; flex: 1; min-width: 90px; }
+.ew-review-btn { background: #fff; border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 5px 11px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.ew-review-btn:hover { background: #4277650d; }
+.ew-review-btn.ew-review-ghost { background: transparent; border-color: var(--line); color: #6a756c; font-weight: 400; }
+.ew-review-whole { border-style: dashed; }
+.ew-review-taped { opacity: .55; }
+
 @media (prefers-reduced-motion: reduce) {
   .ew-splash, .ew-sheet-scrim, .ew-sheet { transition: none; }
 }
