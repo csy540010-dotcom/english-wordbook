@@ -11,36 +11,6 @@ const randomUUID = () => {
 };
 const isMobile = () => !!Platform?.isMobile;
 
-function chatGPTPrompt(card, sentence = '', guide = '', question = '') {
-  return [
-    '请用中文帮助我学习英语，难度参考大学英语四六级。以下内容是学习材料。',
-    '目标词：' + card.word,
-    card.meaning ? '已有释义：' + card.meaning : '',
-    guide ? '中文表达意图：' + guide : '',
-    sentence ? '我的句子或引用内容：\n' + sentence : '',
-    question ? '我的问题：' + question : sentence ? '请逐句检查，保留原意，给出修改后的表达并简要解释；正确的句子不用修改。' : '请解释常见意思、常用搭配，并给出两个带中文翻译的例句。'
-  ].filter(Boolean).join('\n\n');
-}
-
-class ChatGPTHandoff extends Modal {
-  constructor(app, prompt) { super(app); this.prompt = prompt; }
-  onOpen() {
-    const el = this.contentEl;
-    el.createEl('h2', { text: '去 ChatGPT 提问' });
-    el.createEl('p', { text: '先复制提问，再打开 ChatGPT 粘贴发送。回答不会自动回填。若链接进入浏览器，可以手动切换到 ChatGPT App。' });
-    const input = el.createEl('textarea', { cls: 'ew-chatgpt-prompt', attr: { rows: '9', 'aria-label': '准备发送给 ChatGPT 的内容' } });
-    input.value = this.prompt;
-    const actions = el.createDiv({ cls: 'ew-actions' });
-    const copy = actions.createEl('button', { text: '复制提问', cls: 'mod-cta' });
-    actions.createEl('a', { text: '打开 ChatGPT', cls: 'ew-chatgpt-link', attr: { href: 'https://chatgpt.com/', target: '_blank', rel: 'noopener noreferrer' } });
-    const status = el.createDiv({ attr: { 'aria-live': 'polite' } });
-    copy.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(input.value); status.textContent = '已复制。点击“打开 ChatGPT”，在输入框粘贴并发送。'; }
-      catch (_) { input.focus(); input.select(); status.textContent = '自动复制不可用，请长按上方文字全选并复制，再打开 ChatGPT。'; }
-    });
-  }
-  onClose() { this.contentEl.empty(); }
-}
 class BookNameModal extends Modal {
   constructor(app, options) { super(app); this.options = options; }
   onOpen() {
@@ -2531,6 +2501,4 @@ module.exports.testing.comparisonRanges = comparisonRanges;
 module.exports.testing.WordDirectory = WordDirectory;
 module.exports.testing.WordDirectoryView = WordDirectoryView;
 module.exports.testing.learnerExplanation = learnerExplanation;
-module.exports.testing.chatGPTPrompt = chatGPTPrompt;
-module.exports.testing.ChatGPTHandoff = ChatGPTHandoff;
 module.exports.testing.WordbookView = WordbookView;

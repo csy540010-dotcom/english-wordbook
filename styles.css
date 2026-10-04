@@ -6,7 +6,7 @@
   max-width: 760px; margin: 24px auto; color: var(--ew-ink); box-sizing: border-box;
 }
 .ew-card, .ew-practice { padding: 28px 30px; border: 1px solid var(--ew-line); border-radius: 18px; background: var(--ew-paper); box-shadow: 0 5px 22px #00000005; }
-.ew-card [hidden], .ew-add [hidden], .ew-practice [hidden] { display: none !important; }
+.ew-card.ew-card [hidden], .ew-add.ew-add [hidden], .ew-practice.ew-practice [hidden] { display: none; }
 .ew-eyebrow { font-size: 10px; letter-spacing: .18em; color: var(--ew-accent); font-weight: 700; margin-bottom: 10px; }
 .ew-add { padding: 6px 3px 12px; }
 .ew-top-hint { color: var(--ew-muted); font-size: 14px; margin-bottom: 18px; }
@@ -27,7 +27,7 @@
 .ew-card { scroll-margin-top: 24px; }
 .ew-meaning-tape { margin-top: 10px; padding: 10px 14px; min-height: 42px; border-radius: 3px; background: repeating-linear-gradient(135deg, #b8c9a74d, #b8c9a74d 5px, #cbd6b93b 5px, #cbd6b93b 10px); border: 1px dashed var(--ew-line); }
 .ew-meaning-tape[data-revealed=true] { background: #b8c9a714; }
-.ew-tape-toggle { color: var(--ew-accent); background: transparent !important; border: 0 !important; box-shadow: none !important; font-size: 13px; padding: 0; height: auto; }
+.ew-tape-toggle.ew-tape-toggle { color: var(--ew-accent); background: transparent; border: 0; box-shadow: none; font-size: 13px; padding: 0; height: auto; }
 .ew-meaning-tape[data-revealed=true] .ew-tape-toggle { float: right; margin-left: 12px; }
 .ew-meaning-tape .ew-definition { color: var(--text-normal); cursor: pointer; }
 .ew-directory { margin-top: 18px; padding: 12px 16px; border: 1px solid var(--ew-line); border-radius: 10px; }
@@ -38,7 +38,7 @@
 .ew-directory-sidebar { --ew-accent: var(--text-accent); --ew-line: var(--background-modifier-border); padding: 12px; }
 .ew-directory-sidebar .ew-directory { margin-top: 10px; padding: 0; border: 0; }
 .ew-directory-note { font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; margin-bottom: 16px; }
-.ew-card h2 { margin: 0 0 10px !important; font-family: Georgia, 'Times New Roman', serif; font-size: 30px; letter-spacing: -.025em; font-weight: 500; line-height: 1.2; }
+.ew-card.ew-card h2 { margin: 0 0 10px; font-family: Georgia, 'Times New Roman', serif; font-size: 30px; letter-spacing: -.025em; font-weight: 500; line-height: 1.2; }
 .ew-definition { color: var(--ew-muted); font-size: 14px; line-height: 1.9; }
 .ew-modes { display: inline-flex; padding: 4px; gap: 3px; border-radius: 11px; background: var(--background-secondary); margin-bottom: 18px; }
 .ew-modes button { box-shadow: none; border: 0; background: transparent; color: var(--ew-muted); border-radius: 8px; padding: 7px 16px; height: auto; font-size: 13px; }
@@ -50,12 +50,12 @@
 .ew-card textarea::placeholder { color: var(--text-faint); font-size: 14px; }
 .ew-guide { padding: 16px 18px; border-left: 3px solid var(--ew-accent); background: #4277650a; margin-bottom: 18px; border-radius: 0 9px 9px 0; }
 .ew-guide-text { line-height: 1.85; font-size: 15px; }
-.ew-text-button { background: transparent !important; color: var(--ew-accent) !important; border: 0 !important; box-shadow: none !important; padding: 5px 0 !important; font-size: 12px !important; margin-top: 7px; }
+.ew-text-button.ew-text-button { background: transparent; color: var(--ew-accent); border: 0; box-shadow: none; padding: 5px 0; font-size: 12px; margin-top: 7px; }
 .ew-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .ew-card .mod-cta, .ew-add .mod-cta, .ew-practice .mod-cta { background: var(--ew-accent); color: white; border: 0; border-radius: 9px; padding: 10px 17px; height: auto; font-size: 13px; box-shadow: none; }
 .ew-card button:disabled, .ew-add button:disabled, .ew-practice button:disabled { opacity: .55; cursor: default; }
 .ew-status { font-size: 12px; color: var(--ew-muted); line-height: 1.6; }
-.ew-progress { font-size: 11px; box-shadow: none !important; background: transparent !important; color: var(--ew-muted) !important; }
+.ew-progress.ew-progress { font-size: 11px; box-shadow: none; background: transparent; color: var(--ew-muted); }
 .ew-result:not(:empty) { margin-top: 25px; padding-top: 21px; border-top: 1px solid var(--ew-line); }
 .ew-composer { padding: 16px; border: 1px solid var(--ew-line); border-radius: 12px; background: var(--background-primary); }
 .ew-composer > .ew-label > textarea { border: 0; box-shadow: none; padding: 8px 0; margin: 5px 0 10px; min-height: 100px; background: transparent; font-size: 18px; }
@@ -70,7 +70,7 @@
 .ew-comparison > .ew-feedback-label:first-child { margin-top: 0; }
 .ew-feedback-points .ew-explanation { font-size: 15px; color: var(--text-normal); margin-top: 2px; }
 .ew-composer .ew-actions { gap: 18px; }
-.ew-composer .ew-actions .ew-text-button { margin-top: 0; font-size: 14px !important; }
+.ew-composer .ew-actions .ew-text-button { margin-top: 0; font-size: 14px; }
 .ew-comparison { padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--ew-line); }
 .ew-comparison-text { font-size: 18px; line-height: 1.8; white-space: pre-wrap; user-select: text; }
 .ew-diff-change, .ew-card mark.ew-diff-change { color: #c83b3b; font-weight: 600; }
@@ -103,7 +103,7 @@
 .ew-error { color: var(--text-warning); font-size: 12px; margin-top: 10px; line-height: 1.7; }
 .ew-add-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
 .ew-add-form input { min-width: 180px; flex: 1; border-radius: 9px; height: 39px; padding: 9px 12px; }
-.ew-practice h2 { margin: 0 0 9px !important; font-size: 23px; font-weight: 600; }
+.ew-practice.ew-practice h2 { margin: 0 0 9px; font-size: 23px; font-weight: 600; }
 .ew-practice-intro { font-size: 12px; line-height: 1.8; color: var(--ew-muted); margin-bottom: 20px; }
 .ew-practice h3 { font-family: Georgia, serif; font-size: 22px; margin: 27px 0 12px; }
 .ew-passage { font-family: Georgia, 'Times New Roman', serif; font-size: 16px; line-height: 1.95; }
@@ -164,8 +164,6 @@
 .ew-explanation-fold[open] > summary { margin-bottom: 10px; }
 .ew-favorites { margin-top: 18px; padding: 12px 16px; }
 @media (max-width: 520px) { .ew-card, .ew-practice { padding: 21px 18px; border-radius: 13px; } .ew-card h2 { font-size: 28px; } .ew-actions { gap: 9px; } }
-.ew-chatgpt-prompt { width: 100%; min-height: 180px; resize: vertical; }
-.ew-chatgpt-link { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 12px; }
 
 /* Size to the note pane too: split panes can be narrow on tablets and desktop. */
 .ew-card { container-type: inline-size; min-width: 0; }
@@ -221,7 +219,7 @@
 }
 
 .ew-book-manage { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-.ew-book-manage .ew-text-button { margin-top: 0; font-size: 13px !important; }
+.ew-book-manage .ew-text-button { margin-top: 0; font-size: 13px; }
 .ew-book-name-input { width: 100%; margin-bottom: 10px; }
 
 /* ===== App 感界面：启动页 / 底部导航 / 底部抽屉 / 沉浸模式 ===== */
@@ -255,13 +253,13 @@
 .ew-sheet-row-active .ew-sheet-row-title { color: var(--ew-accent, #427765); }
 .ew-sheet-row-create .ew-sheet-row-title { color: var(--text-accent); }
 
-body.ew-immersive .titlebar,
-body.ew-immersive .workspace-ribbon,
-body.ew-immersive .mod-left-split,
-body.ew-immersive .mod-right-split,
-body.ew-immersive .workspace-tab-header-container,
-body.ew-immersive .view-header,
-body.ew-immersive .status-bar { display: none !important; }
+body.ew-immersive.ew-immersive .titlebar,
+body.ew-immersive.ew-immersive .workspace-ribbon,
+body.ew-immersive.ew-immersive .mod-left-split,
+body.ew-immersive.ew-immersive .mod-right-split,
+body.ew-immersive.ew-immersive .workspace-tab-header-container,
+body.ew-immersive.ew-immersive .view-header,
+body.ew-immersive.ew-immersive .status-bar { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .ew-splash, .ew-sheet-scrim, .ew-sheet { transition: none; }

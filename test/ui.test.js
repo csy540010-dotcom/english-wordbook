@@ -44,7 +44,7 @@ async function test(name, fn) {
   await test('styles.css：沉浸模式隐藏 Obsidian 外壳的关键元素', () => {
     const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
     for (const selector of ['.workspace-ribbon', '.mod-left-split', '.mod-right-split', '.workspace-tab-header-container', '.view-header', '.status-bar']) {
-      assert.ok(css.includes('body.ew-immersive ' + selector), '沉浸模式应隐藏 ' + selector);
+      assert.ok(css.includes('body.ew-immersive.ew-immersive ' + selector), '沉浸模式应隐藏 ' + selector);
     }
   });
 
