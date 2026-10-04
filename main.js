@@ -2450,6 +2450,7 @@ module.exports = class WordbookPlugin extends Plugin {
     this.streams = new Set();
     this.saveTail = Promise.resolve();
     this.dispatching = false;
+    if (this.repairMissingPos()) { try { await this.persist(); } catch (_) { /* 修复写入失败不影响启动 */ } }
     await this.migrateReviewScopes();
     await this.importWordNotes();
     this.registerView(BOOK_VIEW, leaf => new WordbookView(leaf, this));
@@ -2699,6 +2700,33 @@ module.exports = class WordbookPlugin extends Plugin {
   dictionaryEntry(word) {
     const hit = this.dictionary?.entries?.[word.toLowerCase()];
     return hit ? { phonetic: hit[0] || '', meaning: hit[1] || '' } : null;
+  }
+  repairMissingPos() {
+    // 词典校正：早期内置词典加载失败时查词降级到 AI，无词性的释义被写入缓存与卡片，
+    // 之后缓存优先导致 AI 版一直生效。这里用带词性的词典版修复（只修复缺词性的，不动正常释义）。
+    const dictEntries = this.dictionary?.entries;
+    if (!dictEntries) return false;
+    const posRe = /^(adj|adv|vt|vi|v|n|prep|conj|pron|num|art|interj|phr|abbr|aux|modal)[\.\s]/i;
+    const dictFix = (meaning, word) => {
+      const current = String(meaning || '').trim();
+      if (current && posRe.test(current)) return null;
+      const hit = dictEntries[String(word || '').toLowerCase()];
+      if (!hit) return null;
+      const dictMeaning = String(Array.isArray(hit) ? hit[1] : hit.meaning || '');
+      return posRe.test(dictMeaning.trim()) ? dictMeaning : null;
+    };
+    let changed = false;
+    for (const [key, entry] of Object.entries(this.data.entries || {})) {
+      if (!entry || typeof entry !== 'object') continue;
+      const fixed = dictFix(entry.meaning, key);
+      if (fixed) { entry.meaning = fixed; changed = true; }
+    }
+    for (const card of this.data.library?.words || []) {
+      if (!card || typeof card !== 'object') continue;
+      const fixed = dictFix(card.meaning, card.word);
+      if (fixed) { card.meaning = fixed; changed = true; }
+    }
+    return changed;
   }
   dictionaryPrompts(word) { return this.dictionary?.prompts?.[word.toLowerCase()] || null; }
   cachedEntry(word) {
