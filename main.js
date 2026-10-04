@@ -235,7 +235,7 @@ class WordbookView extends ItemView {
     if (last) this.scrollToCard(last, highlight);
   }
   attachSwipe(wrap, cardEl, strip, word) {
-    let startX = 0, startY = 0, dx = 0, active = false, axis = null;
+    let startX = 0, startY = 0, dx = 0, active = false, axis = null, captured = false;
     const setX = (value, animate) => {
       cardEl.style.transition = animate ? 'transform .28s cubic-bezier(.2, .8, .3, 1)' : 'none';
       cardEl.style.transform = 'translateX(' + value + 'px)';
@@ -273,14 +273,19 @@ class WordbookView extends ItemView {
     };
     wrap.addEventListener('pointerdown', event => {
       if (event.button !== undefined && event.button !== 0) return;
-      startX = event.clientX; startY = event.clientY; dx = 0; active = true; axis = null;
+      startX = event.clientX; startY = event.clientY; dx = 0; active = true; axis = null; captured = false;
       cardEl.style.transition = 'none';
-      try { wrap.setPointerCapture(event.pointerId); } catch (_) { /* 老环境无捕获时拖出范围会丢事件 */ }
+      // 不在 pointerdown 捕获指针：那会劫持卡片内所有按钮/输入框的点击（胶带点不开）。
+      // 等横向拖动确认后再捕获，普通点击不受影响。
     });
     wrap.addEventListener('pointermove', event => {
       if (!active) return;
       const mx = event.clientX - startX, my = event.clientY - startY;
-      if (axis === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) axis = Math.abs(mx) > Math.abs(my) ? 'x' : 'y';
+      if (axis === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) {
+        axis = Math.abs(mx) > Math.abs(my) ? 'x' : 'y';
+        // 确认横向拖动后才捕获指针：拖出卡片边界也能继续跟手，而普通点击不受影响
+        if (axis === 'x' && !captured) { try { wrap.setPointerCapture(event.pointerId); captured = true; } catch (_) { /* 老环境无捕获时拖出范围会丢事件 */ } }
+      }
       if (axis !== 'x') return;
       cardEl.style.userSelect = 'none';
       const raw = Math.min(0, mx);
