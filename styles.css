@@ -288,6 +288,13 @@ body.ew-immersive.ew-immersive .status-bar { display: none; }
 .ew-fab-search { position: absolute; right: 14px; bottom: 64px; width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 18px rgba(66, 119, 101, .45); z-index: 15; touch-action: none; }
 .ew-fab-search svg { width: 19px; height: 19px; }
 
+/* ===== 卡片左滑删除 ===== */
+.ew-swipe-wrap { position: relative; border-radius: 16px; overflow: hidden; margin-bottom: 11px; }
+.ew-swipe-del { position: absolute; top: 0; right: 0; bottom: 0; width: 88px; background: #c94f43; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.ew-swipe-del .ew-swipe-del-ico { display: flex; }
+.ew-swipe-del svg { width: 18px; height: 18px; }
+.ew-swipe-card { position: relative; background: var(--paper); border: 1px solid var(--line); border-right: 0; border-radius: 16px 0 0 16px; touch-action: pan-y; }
+
 @media (prefers-reduced-motion: reduce) {
   .ew-splash, .ew-sheet-scrim, .ew-sheet { transition: none; }
 }

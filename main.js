@@ -115,7 +115,13 @@ class WordbookView extends ItemView {
     const header = main.createDiv({ cls: 'ew-library-header' });
     mount(new AddWord(header.createDiv({ cls: 'ew-library-add' }), this.plugin, BOOK_PATH));
     for (const card of cards) {
-      mount(new WordCard(main.createDiv(), this.plugin, card, BOOK_PATH + '::' + card.word));
+      const wrap = main.createDiv({ cls: 'ew-swipe-wrap' });
+      const strip = wrap.createDiv({ cls: 'ew-swipe-del', attr: { role: 'button', 'aria-label': '删除 ' + card.word } });
+      setIcon(strip.createSpan({ cls: 'ew-swipe-del-ico' }), 'trash');
+      strip.createSpan({ text: '删除' });
+      const cardEl = wrap.createDiv({ cls: 'ew-swipe-card' });
+      mount(new WordCard(cardEl, this.plugin, card, BOOK_PATH + '::' + card.word));
+      this.attachSwipe(wrap, cardEl, strip, card.word);
     }
     const catalog = this.plugin.bookCatalog(this.plugin.selectedBook());
     const addNext = after => {
@@ -170,6 +176,39 @@ class WordbookView extends ItemView {
     const visible = this.childrenCards.filter(child => child instanceof WordCard && !child.containerEl.hidden);
     const last = visible[visible.length - 1];
     if (last) this.scrollToCard(last, highlight);
+  }
+  attachSwipe(wrap, cardEl, strip, word) {
+    let startX = 0, startY = 0, dx = 0, active = false, axis = null;
+    const base = () => wrap.hasClass('ew-swipe-open') ? -88 : 0;
+    const settle = () => {
+      if (!active) return;
+      active = false; axis = null;
+      const open = dx <= -70;
+      cardEl.style.transform = open ? 'translateX(-88px)' : '';
+      cardEl.style.userSelect = '';
+      if (open) wrap.addClass('ew-swipe-open'); else wrap.removeClass('ew-swipe-open');
+      dx = 0;
+    };
+    cardEl.addEventListener('pointerdown', event => {
+      if (event.button !== undefined && event.button !== 0) return;
+      startX = event.clientX; startY = event.clientY; dx = base(); active = true; axis = null;
+    });
+    cardEl.addEventListener('pointermove', event => {
+      if (!active) return;
+      const mx = event.clientX - startX, my = event.clientY - startY;
+      if (axis === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) axis = Math.abs(mx) > Math.abs(my) ? 'x' : 'y';
+      if (axis !== 'x') return;
+      cardEl.style.userSelect = 'none';
+      dx = Math.max(-96, Math.min(0, base() + mx));
+      cardEl.style.transform = 'translateX(' + dx + 'px)';
+      event.preventDefault();
+    });
+    cardEl.addEventListener('pointerup', settle);
+    cardEl.addEventListener('pointercancel', settle);
+    strip.addEventListener('click', async () => {
+      try { await this.plugin.deleteWords(BOOK_PATH, [word]); }
+      catch (error) { new Notice(error.message || String(error)); }
+    });
   }
   ensureDailyStats() {
     this.data.dailyStats ||= {};
@@ -1305,19 +1344,21 @@ class SentenceCard extends MarkdownRenderChild {
       if (setting?.openTabById) { setting.open(); setting.openTabById('english-wordbook'); }
       else new Notice('请在「设置 → 英语单词书」中管理 AI 接口。');
     });
-    const remove = head.createEl('button', { text: '删除', cls: 'ew-word-delete ew-text-button' });
-    const confirm = head.createDiv({ cls: 'ew-delete-confirm' }); confirm.hidden = true;
-    confirm.createSpan({ text: `从本页删除 ${this.card.word}？收藏和批注保留。` });
-    const yes = confirm.createEl('button', { text: '确认删除', cls: 'ew-delete-button' });
-    const no = confirm.createEl('button', { text: '取消', cls: 'ew-text-button' });
-    remove.addEventListener('click', () => { confirm.hidden = !confirm.hidden; });
-    no.addEventListener('click', () => { confirm.hidden = true; });
-    yes.addEventListener('click', async () => {
-      if (yes.disabled) return; yes.disabled = true;
-      try { await this.plugin.deleteWords(this.key.slice(0, this.key.lastIndexOf('::')), [this.card.word]); }
-      catch (error) { new Notice(error.message); }
-      finally { yes.disabled = false; }
-    });
+    if (!this.key.startsWith(BOOK_PATH + '::')) {
+      const remove = head.createEl('button', { text: '删除', cls: 'ew-word-delete ew-text-button' });
+      const confirm = head.createDiv({ cls: 'ew-delete-confirm' }); confirm.hidden = true;
+      confirm.createSpan({ text: `从本页删除 ${this.card.word}？收藏和批注保留。` });
+      const yes = confirm.createEl('button', { text: '确认删除', cls: 'ew-delete-button' });
+      const no = confirm.createEl('button', { text: '取消', cls: 'ew-text-button' });
+      remove.addEventListener('click', () => { confirm.hidden = !confirm.hidden; });
+      no.addEventListener('click', () => { confirm.hidden = true; });
+      yes.addEventListener('click', async () => {
+        if (yes.disabled) return; yes.disabled = true;
+        try { await this.plugin.deleteWords(this.key.slice(0, this.key.lastIndexOf('::')), [this.card.word]); }
+        catch (error) { new Notice(error.message); }
+        finally { yes.disabled = false; }
+      });
+    }
     const saved = this.plugin.data.cards[this.key] || {};
     this.entry = this.plugin.cachedEntry(this.card.word);
     this.phonetic = head.createDiv({ cls: 'ew-definition' });
