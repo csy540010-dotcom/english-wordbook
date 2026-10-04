@@ -240,6 +240,7 @@ class WordbookView extends ItemView {
     cardEl.addEventListener('pointerdown', event => {
       if (event.button !== undefined && event.button !== 0) return;
       startX = event.clientX; startY = event.clientY; dx = base(); active = true; axis = null;
+      try { cardEl.setPointerCapture(event.pointerId); } catch (_) { /* 老环境无捕获时拖出卡片会丢事件 */ }
     });
     cardEl.addEventListener('pointermove', event => {
       if (!active) return;
@@ -1423,6 +1424,7 @@ class SentenceCard extends MarkdownRenderChild {
       if (goingToReveal && this.key.startsWith(BOOK_PATH + '::')) {
         markTapePeek(this.plugin, this.card.word, this.reviewMode);
         if (this.reviewMode) { this.tapeButton.textContent = '✓ 已安排明日再来'; this.containerEl.addClass('ew-review-taped'); }
+        else new Notice('已记录不熟 · 明日复习', 2500);
       }
     });
     this.definition.addEventListener('click', event => {
