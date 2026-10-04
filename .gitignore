@@ -1,0 +1,20 @@
+# 运行时产物（属于用户数据，不入库）
+data.json
+data.pre-shard.json
+data/
+
+# 同步服务端本地配置（含访问令牌）与数据
+sync/config.json
+sync/data/
+
+# 构建产物
+release/
+
+# node_modules 只保留测试用的 obsidian API 桩
+node_modules/*
+!node_modules/obsidian/
+
+# 本地杂项
+*.log
+.DS_Store
+Thumbs.db

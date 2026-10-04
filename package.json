@@ -1,0 +1,12 @@
+{
+  "name": "english-wordbook",
+  "version": "0.21.0",
+  "description": "Obsidian 插件：内置离线词典与四六级词书，造句批改与长难句英译中练习，自带 Key 直连 AI 接口。",
+  "main": "main.js",
+  "scripts": {
+    "test": "node test/byok.test.js && node test/storage.test.js && node test/ui.test.js && node test/sync.e2e.test.js",
+    "build": "node build.cjs"
+  },
+  "author": "csy540010-dotcom",
+  "license": "MIT"
+}
