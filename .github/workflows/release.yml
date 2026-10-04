@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   release:
@@ -23,6 +25,14 @@ jobs:
 
       - name: Build self-contained main.js
         run: npm run build
+
+      - name: Generate build provenance attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            release/main.js
+            manifest.json
+            styles.css
 
       - name: Create GitHub release with plugin assets
         env:
