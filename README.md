@@ -95,25 +95,35 @@
 
 ## 更新与启用
 
-插件目录包含 manifest.json、main.js、content.js、styles.css、dictionary.json、README.md。更新后在 Obsidian 设置 → 第三方插件中将「英语单词书」关闭再开启一次，然后重新打开笔记。不要在正在批改时重载插件。
-先在 Copilot 的 Quick Chat 中配置并选好可用模型，再使用单词书。可通过命令面板运行「英语单词书：检查 Copilot 连接」。
+社区插件市场安装的版本在 Obsidian 设置 → 第三方插件中点击「检查更新」即可更新。手动安装的用户把 Releases 中的 main.js、manifest.json、styles.css 覆盖到插件目录后重新启用插件。不要在正在批改时重载插件。
+AI 功能需先在「设置 → 英语单词书」中配置接口，可通过命令面板运行「英语单词书：检查 AI 连接」验证。
 
 ## 兼容与保存
 
-当前适配 Copilot 4.0.13 的 Quick Chat 模型管理接口。使用 Copilot 已配置的服务商、API Key 和当前模型，不另设密钥；请求仅包含本次学习任务，不附带活动笔记或聊天历史，也不会写入 Copilot 对话记录。Copilot 内部接口未来升级时可能需要重新适配。
-添加单词触发文本查询；打开旧的缺失词条时也会补齐。已有词条使用缓存。正文内容由 AI 生成可能有误，疑难用法应核对词典。
-批改等待 Copilot 返回完整文字后直接回填并标记完成，AI 不调用工具或读写笔记。模型首次输出仍取决于现有连接。同一模式、同一提示、同一句子已有批改时直接复用；旧版因图片失败而标为 partial 的有效批改也可复用。
-模型调用由 Copilot 当前 Quick Chat 配置处理；如果它正忙，新的查询或提交会提示稍后重试，不自行改变模型或服务商设置。
-用户文字仅作为学习数据，结果以纯文本展示。每次造句批改保留独立 JSON，附带词条来源；草稿、词条、长难句练习状态及各次翻译批改存于插件 data.json，更新不覆盖此文件。生成题目会检查句长、目标词存在和必要答案字段，但语义难度仍由模型决定。
+AI 直连使用 OpenAI 兼容的 /chat/completions 接口（非流式）。请求仅包含本次学习任务（单词、造句或译文与对应提示词），不附带活动笔记、聊天历史或仓库其他内容；同一模式、同一提示、同一句子已有批改时直接复用缓存。
+添加单词触发查词：内置词典（dictionary.json，随插件构建内嵌）优先，词典未收录的词通过 AI 查询并缓存。正文内容由 AI 生成可能有误，疑难用法应核对词典。
+用户文字仅作为学习数据保存：词条与练习状态存放在插件目录的 data/ 分片文件中，AI 接口与界面设置存放在 data.json；更新插件不覆盖这些文件。生成题目会检查句长、目标词存在和必要答案字段，但语义难度仍由模型决定。
+
+## 隐私与数据
+
+本插件不含任何遥测、统计、广告或追踪代码；插件作者不运营任何收集用户数据的服务器。网络请求只有以下两类，均需你在设置中主动配置才会发生：
+
+1. **AI 接口（自带 Key 直连）**：使用批改、AI 查词、问 AI、长难句练习时，插件把当前学习内容（单词、你写的句子或译文、对应提示词）通过 HTTPS 直接发送到你配置的服务商（智谱 GLM、DeepSeek、通义千问、Kimi、硅基流动或自定义 OpenAI 兼容接口）。请求不经过任何中间服务器，插件作者看不到这些内容；服务商按其自身隐私政策处理数据。
+2. **自建同步后端（可选，默认关闭）**：你在设置中填入自己的服务器地址与访问令牌后，插件与该服务器同步学习数据（词条、释义、练习记录、词书索引），并发修改按字段级并集合并。AI Key 与界面偏好永不上传；不配置则完全没有此流量。
+
+**API Key 的存储位置**：Key 保存在插件目录的 data.json 中（Obsidian 插件保存配置的常规位置，明文）。如果你用坚果云、Obsidian Sync 等方式同步整个仓库，data.json 会随之同步到对应云端——请确认你信任这些同步服务，必要时为同步服务使用独立密码或令牌。
+**学习数据**：全部保存在你的仓库本地，作者侧没有任何备份；删除仓库即彻底删除数据。
+
+> Privacy (EN): This plugin contains no telemetry, ads, or tracking, and the author operates no servers that collect user data. The only network traffic is (1) direct HTTPS calls to the AI provider you configure with your own API key — only the current word/sentence being practiced is sent, never your notes or other vault contents — and (2) optional sync with a self-hosted server you configure (learning data only; API keys and settings are never uploaded). Your API key is stored in the plugin's data.json inside your vault. The plugin author receives nothing.
 
 ## 验证
 
-已进行模拟 Obsidian/Copilot 的逻辑测试：Copilot 模型桥接、两种模式的结果和处理状态隔离、同一句分别收藏、批注独立保存并在重开后恢复、旧结果和收藏迁移、未分类收藏保留，以及词义、批改与长难句翻译功能。实际 AI 批改仍取决于 Copilot 服务商连接。
+自动化测试可在 Node 环境直接运行（无需 Obsidian）：BYOK 直连逻辑、分片存储与冲突合并、界面渲染、自建后端同步端到端共四套。实际 AI 批改质量取决于所配置的服务商与模型。
 实现参考：https://github.com/obsidianmd/obsidian-api/blob/master/obsidian.d.ts
+
 ## 移动端
 
-安卓和 iOS 均通过 Copilot 的 Quick Chat 模型连接，不需要安装桌面 Agent 程序。每台设备需安装并启用 Copilot，配置服务商、密钥和 Quick Chat 模型；密钥存储在设备钥匙串时，仅同步笔记不会把密钥带到另一台设备。先确保手机 Copilot 可以正常聊天，再使用单词书的批改、问 AI、查词和练习。
-
-把发布包中的 main.js、manifest.json、styles.css 同步或复制到手机仓库的 .obsidian/plugins/english-wordbook 目录，在 Obsidian 启用或重新加载「英语单词书」。不要用空白 data.json 覆盖已有学习数据。收藏、批注和草稿的跨设备同步还需要同步本插件 data.json、单词书笔记及「英语练习卡/学习记录」；避免两台设备同时修改同一份数据，插件不提供同步冲突合并。
-
-已运行桌面和移动端模拟回归，验证了批改、模式隔离、收藏批注、练习、独立请求以及不依赖 Node 的加载；尚未在安卓/iOS 实机上验证。手机切到后台可能被系统暂停，使用 AI 时请先保持 Obsidian 在前台。
+安卓与 iOS 的 Obsidian 均可使用。AI 通过自带 Key 直连，不需要 Copilot 插件，也不需要桌面 Agent；仓库同步会把 data.json（含 Key）带到其他设备，也可以在每台设备上单独配置。
+更新插件：社区市场安装后一键更新；手动安装则把 Releases 的三个文件复制到手机仓库的 .obsidian/plugins/english-wordbook 目录，重新启用插件。不要用空白 data.json 覆盖已有学习数据。
+跨设备同步学习数据：同步方案需覆盖插件目录下的 data/ 子文件夹（坚果云全库同步默认包含），或在设置中配置自建同步后端；两台设备并发修改同一单词时按并集合并，data/ 里的 *.conflict-*.json 是冲突快照，确认无误后可手动删除。
+手机切到后台可能被系统暂停，使用 AI 时请保持 Obsidian 在前台。
