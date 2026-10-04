@@ -229,12 +229,21 @@ class WordbookView extends ItemView {
     if (last) this.scrollToCard(last, highlight);
   }
   attachSwipe(wrap, cardEl, strip, word) {
-    let startX = 0, startY = 0, dx = 0, active = false, axis = null, dragged = false;
+    let startX = 0, startY = 0, dx = 0, active = false, axis = null, dragged = false, deleting = false;
     const outside = event => { if (!wrap.contains(event.target)) { cardEl.style.transform = ''; wrap.classList.remove('ew-swipe-open'); } };
     const base = () => wrap.hasClass('ew-swipe-open') ? -88 : 0;
-    const settle = () => {
+    const settle = event => {
       if (!active) return;
       active = false;
+      // 指针捕获会把 click 重定向到 wrap，删除带用坐标判定（点删除带且未拖动 = 删除）
+      if (axis === null && event && !deleting) {
+        const rect = strip.getBoundingClientRect();
+        if (event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) {
+          deleting = true;
+          this.plugin.deleteWords(BOOK_PATH, [word]).catch(error => new Notice(error.message || String(error)));
+          return;
+        }
+      }
       const open = axis === 'x' && dx <= -70;
       cardEl.style.transform = open ? 'translateX(-88px)' : '';
       cardEl.style.userSelect = '';
@@ -259,11 +268,7 @@ class WordbookView extends ItemView {
       event.preventDefault();
     });
     wrap.addEventListener('pointerup', settle);
-    wrap.addEventListener('pointercancel', settle);
-    strip.addEventListener('click', () => {
-      if (dragged) return; // 拖拽结束产生的 click 不算删除确认
-      this.plugin.deleteWords(BOOK_PATH, [word]).catch(error => new Notice(error.message || String(error)));
-    });
+    wrap.addEventListener('pointercancel', event => settle(null));
   }
   startStudyTimer() {
     this.stopStudyTimer();
