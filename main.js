@@ -265,21 +265,13 @@ class WordbookView extends ItemView {
       this.plugin.deleteWords(BOOK_PATH, [word]).catch(error => new Notice(error.message || String(error)));
     });
   }
-  ensureDailyStats() {
-    this.data.dailyStats ||= {};
-    const key = todayKey();
-    this.data.dailyStats[key] ||= { words: 0, minutes: 0 };
-    const keys = Object.keys(this.data.dailyStats).sort();
-    while (keys.length > 60) delete this.data.dailyStats[keys.shift()];
-    return this.data.dailyStats[key];
-  }
   startStudyTimer() {
     this.stopStudyTimer();
     this.studyTick = this.registerInterval(window.setInterval(() => {
       if (this.unloaded) return;
-      const stats = this.ensureDailyStats();
+      const stats = this.plugin.ensureDailyStats();
       stats.minutes += 1;
-      void this.persist();
+      void this.plugin.persist();
     }, 60000));
   }
   stopStudyTimer() {
@@ -2028,7 +2020,7 @@ function normalizeLegacyData(data) {
   // 旧版（尤其久未升级的手机端）data.json 可能缺少 0.21 的字段，
   // 视图层与 importWordNotes 直接解引用会崩溃；这里统一补齐默认结构。
   data.entries ||= {}; data.cards ||= {}; data.exercises ||= {};
-  data.exerciseAttempts ||= []; data.quizArchive ||= {}; data.translations ||= {}; data.review ||= {};
+  data.exerciseAttempts ||= []; data.quizArchive ||= {}; data.translations ||= {}; data.review ||= {}; data.dailyStats ||= {};
   data.library ||= { words: [], books: {}, customBooks: [], selectedBook: BUILTIN_BOOKS[0].id, importedNotes: [] };
   data.library.words ||= []; data.library.books ||= {}; data.library.customBooks ||= [];
   data.library.selectedBook ||= BUILTIN_BOOKS[0].id;
@@ -2473,6 +2465,14 @@ module.exports = class WordbookPlugin extends Plugin {
       await this.persist();
     } finally { this.addingBookWord = false; }
     this.refreshBook();
+  }
+  ensureDailyStats() {
+    this.data.dailyStats ||= {};
+    const key = todayKey();
+    this.data.dailyStats[key] ||= { words: 0, minutes: 0 };
+    const keys = Object.keys(this.data.dailyStats).sort();
+    while (keys.length > 60) delete this.data.dailyStats[keys.shift()];
+    return this.data.dailyStats[key];
   }
   refreshBook() {
     for (const leaf of this.app.workspace?.getLeavesOfType(BOOK_VIEW) || []) leaf.view?.renderBook?.();
