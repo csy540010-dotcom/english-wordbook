@@ -293,8 +293,8 @@ body.ew-immersive.ew-immersive .status-bar { display: none; }
 .ew-swipe-del { position: absolute; top: 0; right: 0; bottom: 0; width: 88px; background: #c94f43; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 700; cursor: pointer; }
 .ew-swipe-del .ew-swipe-del-ico { display: flex; }
 .ew-swipe-del svg { width: 18px; height: 18px; }
-.ew-swipe-card { position: relative; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; margin: 0; max-width: none; touch-action: pan-y; }
-.ew-swipe-wrap.ew-swipe-open .ew-swipe-card { border-right: 0; border-radius: 16px 0 0 16px; }
+.ew-swipe-card { position: relative; background: var(--ew-paper, var(--background-primary)); border: 1px solid var(--line); border-radius: 16px; margin: 0; max-width: none; touch-action: pan-y; }
+.ew-swipe-del.ew-swipe-armed { background: #b03d33; }
 
 /* ===== 复习模式（胶带即测试）===== */
 .ew-review-entry { display: flex; }

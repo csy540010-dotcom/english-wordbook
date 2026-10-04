@@ -159,9 +159,6 @@ class WordbookView extends ItemView {
       strip.createSpan({ text: '删除' });
       const cardEl = wrap.createDiv({ cls: 'ew-swipe-card' });
       mount(new WordCard(cardEl, this.plugin, card, BOOK_PATH + '::' + card.word, { reviewMode: this.reviewModeRequested }));
-      const closeBtn = strip.createDiv({ cls: 'ew-swipe-close', attr: { role: 'button', 'aria-label': '' }});
-      closeBtn.setText('x');
-      closeBtn.addEventListener('click', event => { event.stopPropagation(); cardEl.style.transform = ''; wrap.removeClass('ew-swipe-open'); });
       this.attachSwipe(wrap, cardEl, strip, card.word);
     }
     const catalog = this.plugin.bookCatalog(this.plugin.selectedBook());
@@ -229,46 +226,40 @@ class WordbookView extends ItemView {
     if (last) this.scrollToCard(last, highlight);
   }
   attachSwipe(wrap, cardEl, strip, word) {
-    let startX = 0, startY = 0, dx = 0, active = false, axis = null, dragged = false, deleting = false;
-    const outside = event => { if (!wrap.contains(event.target)) { cardEl.style.transform = ''; wrap.classList.remove('ew-swipe-open'); } };
-    const base = () => wrap.hasClass('ew-swipe-open') ? -88 : 0;
-    const settle = event => {
-      if (!active) return;
-      active = false;
-      // 指针捕获会把 click 重定向到 wrap，删除带用坐标判定（点删除带且未拖动 = 删除）
-      if (axis === null && event && !deleting) {
-        const rect = strip.getBoundingClientRect();
-        if (event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) {
-          deleting = true;
-          this.plugin.deleteWords(BOOK_PATH, [word]).catch(error => new Notice(error.message || String(error)));
-          return;
-        }
-      }
-      const open = axis === 'x' && dx <= -70;
-      cardEl.style.transform = open ? 'translateX(-88px)' : '';
+    let startX = 0, startY = 0, dx = 0, active = false, axis = null;
+    const setX = (value, animate) => {
+      cardEl.style.transition = animate ? 'transform .28s cubic-bezier(.2, .8, .3, 1)' : 'none';
+      cardEl.style.transform = 'translateX(' + value + 'px)';
+      if (animate) window.setTimeout(() => { if (!active) cardEl.style.transition = 'none'; }, 320);
+    };
+    const settle = () => {
+      active = false; axis = null;
       cardEl.style.userSelect = '';
-      if (open) wrap.addClass('ew-swipe-open'); else wrap.removeClass('ew-swipe-open');
-      if (open) document.addEventListener('pointerdown', outside, { once: true, capture: true }); else document.removeEventListener('pointerdown', outside, { capture: true });
+      const deleted = dx <= -110;
+      setX(0, true); // 松手回弹
+      if (deleted) this.plugin.deleteWords(BOOK_PATH, [word]).catch(error => new Notice(error.message || String(error)));
       dx = 0;
-      window.setTimeout(() => { dragged = false; }, 60);
     };
     wrap.addEventListener('pointerdown', event => {
       if (event.button !== undefined && event.button !== 0) return;
-      startX = event.clientX; startY = event.clientY; dx = base(); active = true; axis = null; dragged = false;
+      startX = event.clientX; startY = event.clientY; dx = 0; active = true; axis = null;
+      cardEl.style.transition = 'none';
       try { wrap.setPointerCapture(event.pointerId); } catch (_) { /* 老环境无捕获时拖出范围会丢事件 */ }
     });
     wrap.addEventListener('pointermove', event => {
       if (!active) return;
       const mx = event.clientX - startX, my = event.clientY - startY;
-      if (axis === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) { axis = Math.abs(mx) > Math.abs(my) ? 'x' : 'y'; if (axis === 'x') dragged = true; }
+      if (axis === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) axis = Math.abs(mx) > Math.abs(my) ? 'x' : 'y';
       if (axis !== 'x') return;
       cardEl.style.userSelect = 'none';
-      dx = Math.max(-96, Math.min(0, base() + mx));
-      cardEl.style.transform = 'translateX(' + dx + 'px)';
+      const raw = Math.min(0, mx);
+      dx = raw < -96 ? -96 + (raw + 96) * 0.35 : raw; // 越拖越有阻力
+      setX(dx, false);
+      strip.classList.toggle('ew-swipe-armed', dx <= -110);
       event.preventDefault();
     });
     wrap.addEventListener('pointerup', settle);
-    wrap.addEventListener('pointercancel', event => settle(null));
+    wrap.addEventListener('pointercancel', () => { if (active) { active = false; axis = null; setX(0, true); dx = 0; } });
   }
   startStudyTimer() {
     this.stopStudyTimer();
