@@ -1765,6 +1765,19 @@ async function migrateToShards(plugin, raw, data) {
   await saveShards(plugin, data);
 }
 
+function normalizeLegacyData(data) {
+  // 旧版（尤其久未升级的手机端）data.json 可能缺少 0.21 的字段，
+  // 视图层与 importWordNotes 直接解引用会崩溃；这里统一补齐默认结构。
+  data.entries ||= {}; data.cards ||= {}; data.exercises ||= {};
+  data.exerciseAttempts ||= []; data.quizArchive ||= {}; data.translations ||= {};
+  data.library ||= { words: [], books: {}, customBooks: [], selectedBook: BUILTIN_BOOKS[0].id, importedNotes: [] };
+  data.library.words ||= []; data.library.books ||= {}; data.library.customBooks ||= [];
+  data.library.selectedBook ||= BUILTIN_BOOKS[0].id;
+  data.library.importedNotes ||= [];
+  data.directoryPlacement ||= 'left';
+  return data;
+}
+
 async function initShardStorage(plugin) {
   let raw = {};
   try { raw = (await plugin.loadData()) || {}; } catch (error) { console.error('[english-wordbook] 读取 data.json 失败', error); }
@@ -1784,6 +1797,7 @@ async function initShardStorage(plugin) {
   }
   if (!plugin.__shardState) plugin.__shardState = newShardState();
   for (const key of Object.keys(raw)) if (!SHARDED_KEYS.has(key)) plugin.__shardState.keep[key] = raw[key];
+  normalizeLegacyData(data);
   if (!raw.storage) {
     try { await migrateToShards(plugin, raw, data); }
     catch (error) { console.error('[english-wordbook] 分片迁移失败，本次会话回退单文件保存', error); plugin.__shardDisabled = true; }

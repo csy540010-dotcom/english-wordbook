@@ -66,6 +66,24 @@ const wordFile = (adapter, word) => P.words + '/' + shardFileName(word) + '.json
 (async () => {
   console.log('分片存储逻辑测试');
 
+  await test('旧版 data.json 缺少新字段（久未升级的手机端）→ 自动补默认结构，视图打开不崩溃', async () => {
+    const adapter = makeAdapter();
+    adapter.files.set(DIR + '/data.json', JSON.stringify({ ai: { preset: 'custom', baseUrl: 'https://x/v1', apiKey: '', model: 'm' } }));
+    const plugin = makePlugin(adapter);
+    plugin.app.vault.getMarkdownFiles = () => [];
+    const data = await initShardStorage(plugin);
+    assert.deepStrictEqual(data.cards, {});
+    assert.deepStrictEqual(data.entries, {});
+    assert.ok(Array.isArray(data.exerciseAttempts));
+    assert.strictEqual(data.library.selectedBook, 'personal');
+    assert.ok(Array.isArray(data.library.words));
+    assert.deepStrictEqual(data.library.books, {});
+    assert.ok(Array.isArray(data.library.importedNotes));
+    assert.ok(Array.isArray(data.library.customBooks));
+    plugin.data = data;
+    await plugin.importWordNotes(); // 视图打开的第一步，缺字段时会在此抛错
+  });
+
   await test('首次启动迁移：拆分文件、备份、瘦身 data.json', async () => {
     const adapter = makeAdapter();
     adapter.files.set(DIR + '/data.json', JSON.stringify(legacyDataJson()));
